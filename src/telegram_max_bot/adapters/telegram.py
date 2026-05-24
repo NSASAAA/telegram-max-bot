@@ -17,6 +17,7 @@ class TelegramAdapter:
         application = Application.builder().token(self._token).build()
         application.add_handler(CommandHandler("start", self._handle_start))
         application.add_handler(CommandHandler("help", self._handle_help))
+        application.add_handler(CommandHandler("about", self._handle_about))
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_text))
         application.run_polling()
 
@@ -29,6 +30,11 @@ class TelegramAdapter:
     async def _handle_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         del context
         response = self._bot.handle_help()
+        await update.effective_message.reply_text(response.text)
+
+    async def _handle_about(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        del context
+        response = self._bot.handle_about()
         await update.effective_message.reply_text(response.text)
 
     async def _handle_text(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

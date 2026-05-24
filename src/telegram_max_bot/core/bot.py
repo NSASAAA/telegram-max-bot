@@ -14,8 +14,14 @@ class Bot:
                 "Доступные команды:\n"
                 "/start - приветствие\n"
                 "/help - список команд\n"
+                "/about - информация о боте\n"
                 "Любой текст - повтор сообщения"
             )
+        )
+
+    def handle_about(self) -> OutgoingMessage:
+        return OutgoingMessage(
+            text="Это тестовый Telegram-бот для проверки связки VSCode, Codex, GitHub Actions, VPS и Docker."
         )
 
     def handle_text(self, message: IncomingMessage) -> OutgoingMessage:
