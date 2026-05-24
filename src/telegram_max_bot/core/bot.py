@@ -21,7 +21,7 @@ class Bot:
 
     def handle_about(self) -> OutgoingMessage:
         return OutgoingMessage(
-            text="Это тестовый Telegram-бот для проверки связки VSCode, Codex, GitHub Actions, VPS и Docker.!!!!!!!!!!!!!!!!!!!!"
+            text="Это тестовый Telegram-бот для проверки связки VSCode, Codex, GitHub Actions, VPS и Docker.!!!!!!!!!!!!!!!!!!!!???"
         )
 
     def handle_text(self, message: IncomingMessage) -> OutgoingMessage:
