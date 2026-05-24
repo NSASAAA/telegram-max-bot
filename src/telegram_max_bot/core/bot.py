@@ -6,7 +6,7 @@ class Bot:
 
     def handle_start(self, message: IncomingMessage) -> OutgoingMessage:
         name = message.username or "пользователь"
-        return OutgoingMessage(text=f"Привет, {name}! Я универсальный бот Telegram/MAX.")
+        return OutgoingMessage(text=f"Привет, {name}! Привет! Я обновился через автодеплой с GitHub Actions.")
 
     def handle_help(self) -> OutgoingMessage:
         return OutgoingMessage(
