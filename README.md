@@ -52,3 +52,4 @@ PYTHONPATH=src python -m telegram_max_bot.main
 ```bash
 docker compose up --build
 ```
+
