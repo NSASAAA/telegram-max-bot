@@ -1,6 +1,7 @@
+from typing import Optional
+
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
-from typing import Optional
 
 from telegram_max_bot.core.bot import Bot
 from telegram_max_bot.core.models import IncomingMessage
@@ -18,6 +19,7 @@ class TelegramAdapter:
         application.add_handler(CommandHandler("start", self._handle_start))
         application.add_handler(CommandHandler("help", self._handle_help))
         application.add_handler(CommandHandler("about", self._handle_about))
+        application.add_handler(CommandHandler("articles", self._handle_articles))
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_text))
         application.run_polling()
 
@@ -35,6 +37,11 @@ class TelegramAdapter:
     async def _handle_about(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         del context
         response = self._bot.handle_about()
+        await update.effective_message.reply_text(response.text)
+
+    async def _handle_articles(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        del context
+        response = self._bot.handle_articles()
         await update.effective_message.reply_text(response.text)
 
     async def _handle_text(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
