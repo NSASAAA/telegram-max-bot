@@ -69,14 +69,25 @@ def save_posts(posts: Iterable[RssPost]) -> int:
 
 
 def get_latest_posts(limit: int = 10) -> list[sqlite3.Row]:
+
     with get_connection() as connection:
+
         cursor = connection.execute(
+
             """
-            SELECT id, title, link, published, author, categories
+
+            SELECT id, title, link, published, summary, author, categories
+
             FROM posts
+
             ORDER BY id DESC
+
             LIMIT ?
+
             """,
+
             (limit,),
+
         )
+
         return list(cursor.fetchall())
