@@ -5,6 +5,8 @@ services:
       - .env
     environment:
       PYTHONPATH: /app/src
+    volumes:
+      - ./data:/app/data
     command: python -m telegram_max_bot.main
     restart: unless-stopped
     mem_limit: 256m
