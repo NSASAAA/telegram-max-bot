@@ -4,7 +4,11 @@ from telegram_max_bot.adapters.telegram import TelegramAdapter
 
 def main() -> None:
     config = load_config()
-    TelegramAdapter(token=config.telegram_bot_token).run()
+    TelegramAdapter(
+        token=config.telegram_bot_token,
+        rss_url=config.source_rss_url,
+        check_interval_seconds=config.check_interval_seconds,
+    ).run()
 
 
 if __name__ == "__main__":

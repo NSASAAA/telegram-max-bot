@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from os import getenv
+from typing import Optional
 
 from dotenv import load_dotenv
 
@@ -7,6 +8,8 @@ from dotenv import load_dotenv
 @dataclass(frozen=True)
 class Config:
     telegram_bot_token: str
+    source_rss_url: Optional[str]
+    check_interval_seconds: int
 
 
 def load_config() -> Config:
@@ -16,6 +19,15 @@ def load_config() -> Config:
     if not telegram_bot_token:
         raise RuntimeError("TELEGRAM_BOT_TOKEN environment variable is required")
 
+    source_rss_url = getenv("SOURCE_RSS_URL")
+    raw_interval = getenv("CHECK_INTERVAL_SECONDS", "0")
+    try:
+        check_interval_seconds = max(0, int(raw_interval))
+    except ValueError:
+        check_interval_seconds = 0
+
     return Config(
         telegram_bot_token=telegram_bot_token,
+        source_rss_url=source_rss_url,
+        check_interval_seconds=check_interval_seconds,
     )

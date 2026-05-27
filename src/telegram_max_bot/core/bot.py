@@ -1,7 +1,8 @@
 from html import unescape
 import re
+from typing import Optional
 
-from telegram_max_bot.core.models import IncomingMessage, OutgoingMessage
+from telegram_max_bot.core.models import ImportStats, IncomingMessage, OutgoingMessage
 from telegram_max_bot.db import get_latest_posts
 
 
@@ -27,6 +28,7 @@ class Bot:
                 "Я бот-навигатор по статьям автора.\n\n"
                 "Команды:\n"
                 "/articles - последние статьи\n"
+                "/check - импортировать RSS\n"
                 "/help - помощь\n"
                 "/about - о боте"
             )
@@ -38,6 +40,7 @@ class Bot:
                 "Доступные команды:\n"
                 "/start - приветствие\n"
                 "/articles - последние статьи из базы\n"
+                "/check - импортировать RSS сейчас\n"
                 "/help - список команд\n"
                 "/about - информация о боте"
             )
@@ -46,8 +49,8 @@ class Bot:
     def handle_about(self) -> OutgoingMessage:
         return OutgoingMessage(
             text=(
-                "Это тестовая версия бота для работы со статьями из RSS.\n"
-                "Сейчас бот уже умеет читать статьи из базы данных и показывать последние публикации."
+                "Это тестовый Telegram-бот для проверки связки VSCode, Codex, GitHub Actions, "
+                "VPS и Docker.!!!!!!!!!!!!!!!!!!!!???---"
             )
         )
 
@@ -58,8 +61,8 @@ class Bot:
             return OutgoingMessage(
                 text=(
                     "В базе пока нет статей.\n\n"
-                    "Сначала запусти импорт:\n"
-                    "SOURCE_RSS_URL=https://habr.com/ru/rss/articles/ "
+                    "Сначала запусти импорт RSS.\n"
+                    "Проверь SOURCE_RSS_URL в .env и выполни:\n"
                     "PYTHONPATH=src python -m telegram_max_bot.rss_import"
                 )
             )
@@ -76,6 +79,27 @@ class Bot:
             )
 
         return OutgoingMessage(text="\n".join(lines))
+
+    def handle_check_result(
+        self,
+        stats: Optional[ImportStats],
+        error_message: Optional[str] = None,
+    ) -> OutgoingMessage:
+        if error_message:
+            return OutgoingMessage(text=f"Ошибка импорта RSS: {error_message}")
+
+        if stats is None:
+            return OutgoingMessage(text="Импорт не выполнен: нет данных.")
+
+        return OutgoingMessage(
+            text=(
+                "Импорт RSS завершен.\n\n"
+                f"Получено записей: {stats.total}\n"
+                f"Новых: {stats.created}\n"
+                f"Обновлено: {stats.updated}\n"
+                f"Без изменений: {stats.unchanged}"
+            )
+        )
 
     def handle_text(self, message: IncomingMessage) -> OutgoingMessage:
         text = (message.text or "").strip()
