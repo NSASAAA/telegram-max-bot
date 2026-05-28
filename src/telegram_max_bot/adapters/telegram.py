@@ -37,6 +37,8 @@ class TelegramAdapter:
         application.add_handler(CommandHandler("help", self._handle_help))
         application.add_handler(CommandHandler("about", self._handle_about))
         application.add_handler(CommandHandler("articles", self._handle_articles))
+        application.add_handler(CommandHandler("top", self._handle_top))
+        application.add_handler(CommandHandler("random", self._handle_random))
         application.add_handler(CommandHandler("check", self._handle_check))
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_text))
         application.run_polling()
@@ -89,6 +91,16 @@ class TelegramAdapter:
     async def _handle_articles(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         del context
         response = self._bot.handle_articles()
+        await update.effective_message.reply_text(response.text)
+
+    async def _handle_top(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        del context
+        response = self._bot.handle_top()
+        await update.effective_message.reply_text(response.text)
+
+    async def _handle_random(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        del context
+        response = self._bot.handle_random()
         await update.effective_message.reply_text(response.text)
 
     async def _handle_check(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

@@ -3,7 +3,7 @@ import re
 from typing import Optional
 
 from telegram_max_bot.core.models import ImportStats, IncomingMessage, OutgoingMessage
-from telegram_max_bot.db import get_latest_posts
+from telegram_max_bot.db import get_latest_posts, get_random_post, get_top_posts
 
 
 def clean_html(raw_html: str, limit: int = 250) -> str:
@@ -28,6 +28,8 @@ class Bot:
                 "Я бот-навигатор по статьям автора.\n\n"
                 "Команды:\n"
                 "/articles - последние статьи\n"
+                "/top - самые читаемые статьи\n"
+                "/random - случайная статья\n"
                 "/check - импортировать RSS\n"
                 "/help - помощь\n"
                 "/about - о боте"
@@ -40,6 +42,8 @@ class Bot:
                 "Доступные команды:\n"
                 "/start - приветствие\n"
                 "/articles - последние статьи из базы\n"
+                "/top - самые читаемые статьи из базы\n"
+                "/random - случайная статья из базы\n"
                 "/check - импортировать RSS сейчас\n"
                 "/help - список команд\n"
                 "/about - информация о боте"
@@ -70,15 +74,31 @@ class Bot:
         lines = ["Последние статьи:\n"]
 
         for index, post in enumerate(posts, start=1):
-            summary = clean_html(post["summary"], limit=180)
-
-            lines.append(
-                f"{index}. {post['title']}\n"
-                f"{summary}\n"
-                f"{post['link']}\n"
-            )
+            lines.append(f"{index}. {self._format_post(post)}")
 
         return OutgoingMessage(text="\n".join(lines))
+
+    def handle_top(self) -> OutgoingMessage:
+        posts = get_top_posts(limit=5)
+
+        if not posts:
+            return OutgoingMessage(text="В базе пока нет статей.")
+
+        lines = ["Самые читаемые статьи:\n"]
+        for index, post in enumerate(posts, start=1):
+            views_count = post["views_count"]
+            views_text = f"Просмотры: {views_count}\n" if views_count is not None else ""
+            lines.append(f"{index}. {views_text}{self._format_post(post)}")
+
+        return OutgoingMessage(text="\n".join(lines))
+
+    def handle_random(self) -> OutgoingMessage:
+        post = get_random_post()
+
+        if post is None:
+            return OutgoingMessage(text="В базе пока нет статей.")
+
+        return OutgoingMessage(text="Случайная статья:\n\n" + self._format_post(post))
 
     def handle_check_result(
         self,
@@ -106,5 +126,17 @@ class Bot:
 
         if text == "/articles":
             return self.handle_articles()
+        if text == "/top":
+            return self.handle_top()
+        if text == "/random":
+            return self.handle_random()
 
         return OutgoingMessage(text=f"Я получил сообщение: {message.text}")
+
+    def _format_post(self, post) -> str:
+        summary = clean_html(post["summary"], limit=180)
+        return (
+            f"{post['title']}\n"
+            f"{summary}\n"
+            f"{post['link']}\n"
+        )
