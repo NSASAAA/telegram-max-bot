@@ -11,3 +11,18 @@ services:
     restart: unless-stopped
     mem_limit: 256m
     cpus: "0.50"
+
+  web:
+    build: .
+    env_file:
+      - .env
+    environment:
+      PYTHONPATH: /app/src
+    volumes:
+      - ./data:/app/data
+    command: uvicorn telegram_max_bot.web:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: "0.50"

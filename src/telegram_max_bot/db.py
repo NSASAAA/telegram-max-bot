@@ -392,6 +392,59 @@ def get_random_post() -> Optional[sqlite3.Row]:
         ).fetchone()
 
 
+def get_post_by_id(post_id: int) -> Optional[sqlite3.Row]:
+    init_db()
+    with get_connection() as connection:
+        return connection.execute(
+            """
+            SELECT
+                id,
+                title,
+                link,
+                published,
+                summary,
+                content_text,
+                author,
+                categories,
+                views_count,
+                reading_time_minutes,
+                comments_count,
+                cover_image_path,
+                published_label
+            FROM posts
+            WHERE id = ?
+            LIMIT 1
+            """,
+            (post_id,),
+        ).fetchone()
+
+
+def get_article_images(post_id: int) -> list[sqlite3.Row]:
+    init_db()
+    with get_connection() as connection:
+        cursor = connection.execute(
+            """
+            SELECT
+                id,
+                post_id,
+                local_path,
+                position,
+                role,
+                alt_text,
+                mime_type,
+                file_size
+            FROM article_images
+            WHERE post_id = ?
+                AND download_status = 'downloaded'
+                AND local_path IS NOT NULL
+                AND local_path != ''
+            ORDER BY position ASC, id ASC
+            """,
+            (post_id,),
+        )
+        return list(cursor.fetchall())
+
+
 def get_topic_counts() -> list[tuple[Topic, int]]:
     init_db()
     _ensure_article_topics_index()

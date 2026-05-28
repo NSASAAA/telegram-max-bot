@@ -2,7 +2,12 @@ from html import unescape
 import re
 from typing import Optional
 
-from telegram_max_bot.core.models import ImportStats, IncomingMessage, OutgoingMessage
+from telegram_max_bot.core.models import (
+    ImportStats,
+    IncomingMessage,
+    LinkButton,
+    OutgoingMessage,
+)
 from telegram_max_bot.core.topics import (
     get_topic_by_code,
     get_topic_code_from_command,
@@ -30,6 +35,9 @@ def clean_html(raw_html: str, limit: int = 250) -> str:
 
 class Bot:
     """Shared bot business logic independent from messenger APIs."""
+
+    def __init__(self, web_base_url: Optional[str] = None) -> None:
+        self._web_base_url = (web_base_url or "").rstrip("/")
 
     def handle_start(self, message: IncomingMessage) -> OutgoingMessage:
         name = message.username or "пользователь"
@@ -88,7 +96,10 @@ class Bot:
         for index, post in enumerate(posts, start=1):
             lines.append(f"{index}. {self._format_post(post)}")
 
-        return OutgoingMessage(text="\n".join(lines))
+        return OutgoingMessage(
+            text="\n".join(lines),
+            buttons=self._article_buttons(posts),
+        )
 
     def handle_top(self) -> OutgoingMessage:
         posts = get_top_posts(limit=5)
@@ -102,7 +113,10 @@ class Bot:
             views_text = f"Просмотры: {views_count}\n" if views_count is not None else ""
             lines.append(f"{index}. {views_text}{self._format_post(post)}")
 
-        return OutgoingMessage(text="\n".join(lines))
+        return OutgoingMessage(
+            text="\n".join(lines),
+            buttons=self._article_buttons(posts),
+        )
 
     def handle_random(self) -> OutgoingMessage:
         post = get_random_post()
@@ -110,7 +124,10 @@ class Bot:
         if post is None:
             return OutgoingMessage(text="В базе пока нет статей.")
 
-        return OutgoingMessage(text="Случайная статья:\n\n" + self._format_post(post))
+        return OutgoingMessage(
+            text="Случайная статья:\n\n" + self._format_post(post),
+            buttons=self._article_buttons([post], single_label="Читать"),
+        )
 
     def handle_topics(self) -> OutgoingMessage:
         topic_counts = get_topic_counts()
@@ -153,7 +170,10 @@ class Bot:
         for index, post in enumerate(posts, start=1):
             lines.append(f"{index}. {self._format_post(post)}")
 
-        return OutgoingMessage(text="\n".join(lines))
+        return OutgoingMessage(
+            text="\n".join(lines),
+            buttons=self._article_buttons(posts),
+        )
 
     def handle_check_result(
         self,
@@ -202,5 +222,24 @@ class Bot:
         return (
             f"{post['title']}\n"
             f"{summary}\n"
-            f"{post['link']}\n"
         )
+
+    def _article_buttons(
+        self,
+        posts,
+        single_label: str = "",
+    ) -> tuple[LinkButton, ...]:
+        if not self._web_base_url:
+            return ()
+
+        buttons: list[LinkButton] = []
+        for index, post in enumerate(posts, start=1):
+            label = single_label or f"Читать {index}"
+            buttons.append(
+                LinkButton(
+                    text=label,
+                    url=f"{self._web_base_url}/articles/{post['id']}",
+                )
+            )
+
+        return tuple(buttons)

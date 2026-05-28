@@ -12,6 +12,13 @@ class IncomingMessage:
 @dataclass(frozen=True)
 class OutgoingMessage:
     text: str
+    buttons: tuple["LinkButton", ...] = ()
+
+
+@dataclass(frozen=True)
+class LinkButton:
+    text: str
+    url: str
 
 
 @dataclass(frozen=True)

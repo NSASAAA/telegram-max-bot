@@ -10,6 +10,7 @@ class Config:
     telegram_bot_token: str
     source_rss_url: Optional[str]
     check_interval_seconds: int
+    web_base_url: Optional[str]
 
 
 def load_config() -> Config:
@@ -20,6 +21,7 @@ def load_config() -> Config:
         raise RuntimeError("TELEGRAM_BOT_TOKEN environment variable is required")
 
     source_rss_url = getenv("SOURCE_RSS_URL")
+    web_base_url = (getenv("WEB_BASE_URL") or "").strip() or None
     raw_interval = getenv("CHECK_INTERVAL_SECONDS", "0")
     try:
         check_interval_seconds = max(0, int(raw_interval))
@@ -30,4 +32,5 @@ def load_config() -> Config:
         telegram_bot_token=telegram_bot_token,
         source_rss_url=source_rss_url,
         check_interval_seconds=check_interval_seconds,
+        web_base_url=web_base_url,
     )

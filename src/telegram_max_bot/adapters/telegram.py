@@ -1,11 +1,11 @@
 import asyncio
 from typing import Optional
 
-from telegram import Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 
 from telegram_max_bot.core.bot import Bot
-from telegram_max_bot.core.models import IncomingMessage
+from telegram_max_bot.core.models import IncomingMessage, OutgoingMessage
 from telegram_max_bot.core.topics import TOPICS
 from telegram_max_bot.rss_import import import_from_rss_url
 
@@ -18,12 +18,13 @@ class TelegramAdapter:
         token: str,
         rss_url: Optional[str] = None,
         check_interval_seconds: int = 0,
+        web_base_url: Optional[str] = None,
         bot: Optional[Bot] = None,
     ) -> None:
         self._token = token
         self._rss_url = rss_url
         self._check_interval_seconds = max(0, check_interval_seconds)
-        self._bot = bot or Bot()
+        self._bot = bot or Bot(web_base_url=web_base_url)
         self._rss_import_task: Optional[asyncio.Task] = None
 
     def run(self) -> None:
@@ -85,42 +86,42 @@ class TelegramAdapter:
         del context
         message = self._to_incoming_message(update)
         response = self._bot.handle_start(message)
-        await update.effective_message.reply_text(response.text)
+        await self._reply(update, response)
 
     async def _handle_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         del context
         response = self._bot.handle_help()
-        await update.effective_message.reply_text(response.text)
+        await self._reply(update, response)
 
     async def _handle_about(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         del context
         response = self._bot.handle_about()
-        await update.effective_message.reply_text(response.text)
+        await self._reply(update, response)
 
     async def _handle_articles(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         del context
         response = self._bot.handle_articles()
-        await update.effective_message.reply_text(response.text)
+        await self._reply(update, response)
 
     async def _handle_top(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         del context
         response = self._bot.handle_top()
-        await update.effective_message.reply_text(response.text)
+        await self._reply(update, response)
 
     async def _handle_random(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         del context
         response = self._bot.handle_random()
-        await update.effective_message.reply_text(response.text)
+        await self._reply(update, response)
 
     async def _handle_topics(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         del context
         response = self._bot.handle_topics()
-        await update.effective_message.reply_text(response.text)
+        await self._reply(update, response)
 
     async def _handle_topic(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         topic_code = context.args[0] if context.args else ""
         response = self._bot.handle_topic(topic_code)
-        await update.effective_message.reply_text(response.text)
+        await self._reply(update, response)
 
     async def _handle_topic_shortcut(
         self,
@@ -131,7 +132,7 @@ class TelegramAdapter:
         command = (update.effective_message.text or "").split()[0].split("@")[0]
         topic_code = command.removeprefix("/topic_")
         response = self._bot.handle_topic(topic_code)
-        await update.effective_message.reply_text(response.text)
+        await self._reply(update, response)
 
     async def _handle_check(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         del context
@@ -141,7 +142,7 @@ class TelegramAdapter:
                 stats=None,
                 error_message="SOURCE_RSS_URL не задан в .env",
             )
-            await update.effective_message.reply_text(response.text)
+            await self._reply(update, response)
             return
 
         try:
@@ -150,13 +151,29 @@ class TelegramAdapter:
         except Exception as error:
             response = self._bot.handle_check_result(stats=None, error_message=str(error))
 
-        await update.effective_message.reply_text(response.text)
+        await self._reply(update, response)
 
     async def _handle_text(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         del context
         message = self._to_incoming_message(update)
         response = self._bot.handle_text(message)
-        await update.effective_message.reply_text(response.text)
+        await self._reply(update, response)
+
+    async def _reply(self, update: Update, response: OutgoingMessage) -> None:
+        reply_markup = None
+        if response.buttons:
+            reply_markup = InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton(button.text, url=button.url)]
+                    for button in response.buttons
+                ]
+            )
+
+        await update.effective_message.reply_text(
+            response.text,
+            reply_markup=reply_markup,
+            disable_web_page_preview=True,
+        )
 
     def _to_incoming_message(self, update: Update) -> IncomingMessage:
         user = update.effective_user
