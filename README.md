@@ -2,16 +2,16 @@
 
 Python-бот для Telegram с перспективой добавления MAX.
 
-Сейчас работает Telegram-версия: бот отвечает на команды, читает статьи из SQLite-базы и показывает последние импортированные материалы из RSS. MAX-адаптер пока оставлен заглушкой.
+Сейчас работает Telegram-версия на VPS: бот отвечает на команды, читает статьи Дзена из SQLite-базы и показывает материалы пользователю. MAX-адаптер пока оставлен заглушкой.
 
 ## Что сейчас умеет бот
 
 - Работает в Telegram через `python-telegram-bot`.
 - Загружает настройки из `.env`.
-- Читает RSS через `feedparser`.
+- Работает с импортированным архивом Дзена.
 - Сохраняет статьи в SQLite-базу `data/bot.db`.
 - Показывает последние статьи командой `/articles`.
-- Запускается локально и через Docker Compose.
+- Запускается на VPS через Docker Compose.
 
 ## Команды бота
 
@@ -37,14 +37,14 @@ cp .env.example .env
 ```env
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
 APP_ENV=development
-SOURCE_RSS_URL=your_rss_feed_url_here
-CHECK_INTERVAL_SECONDS=300
+SOURCE_RSS_URL=
+CHECK_INTERVAL_SECONDS=0
 DATABASE_PATH=data/bot.db
 ```
 
 Реальные токены нельзя коммитить в Git. Файл `.env` должен оставаться локальным.
 
-## Локальный запуск
+## Локальная разработка
 
 Создать виртуальное окружение:
 
@@ -59,16 +59,21 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Запустить Telegram-бота:
+Проверить синтаксис кода:
 
 ```bash
-PYTHONPATH=src python -m telegram_max_bot.main
+PYTHONPATH=src python -m compileall src
 ```
 
-Если на Mac команда `python` недоступна, использовать:
+Telegram-бота локально сейчас не запускаем, потому что VPS-экземпляр использует тот же Telegram token и работает через polling. Новые изменения проверяются так:
 
-```bash
-PYTHONPATH=src python3 -m telegram_max_bot.main
+```text
+локально пишем код
+→ commit
+→ push
+→ GitHub Actions
+→ VPS
+→ проверяем команды в Telegram
 ```
 
 ## Запуск через Docker
@@ -99,42 +104,26 @@ docker compose down
 
 ## RSS-импорт
 
-RSS-импорт можно запускать вручную и автоматически.
+RSS-импорт был реализован и проверен на раннем этапе проекта, но сейчас не является рабочим источником данных. Хабр больше не используется.
 
-Локально:
+Код RSS-импорта оставлен как заготовка на будущее. Если он снова понадобится, его можно запускать вручную:
 
 ```bash
 PYTHONPATH=src python -m telegram_max_bot.rss_import
 ```
 
-Через Docker:
-
-```bash
-docker compose exec -T bot python -m telegram_max_bot.rss_import
-```
-
-На VPS из папки проекта:
-
-```bash
-cd /opt/bots/telegram-max-bot
-docker compose exec -T bot python -m telegram_max_bot.rss_import
-```
-
-После импорта создается или обновляется база:
-
-```text
-data/bot.db
-```
-
-Повторный импорт не создает дубликаты, потому что статьи сохраняются по уникальной ссылке.
-
-Автоматический импорт:
+Автоматический RSS-импорт включается только если:
 
 - если `SOURCE_RSS_URL` задан
 - и `CHECK_INTERVAL_SECONDS > 0`
 - бот выполняет периодический импорт в фоне с указанным интервалом.
 
-Текущий production-режим: `CHECK_INTERVAL_SECONDS=300` (раз в 5 минут).
+Текущий режим после перехода на Дзен:
+
+```env
+SOURCE_RSS_URL=
+CHECK_INTERVAL_SECONDS=0
+```
 
 ## Импорт архива Дзена
 
@@ -150,11 +139,18 @@ data/raw/dzen_1234elena/articles_full.jsonl
 PYTHONPATH=src python -m telegram_max_bot.dzen_import
 ```
 
-Результат:
+Локальный результат подготовки:
 
 ```text
 data/dzen_bot.db
 data/media/dzen_1234elena/
+```
+
+На VPS эта база перенесена как:
+
+```text
+/opt/bots/telegram-max-bot/data/bot.db
+/opt/bots/telegram-max-bot/data/media/dzen_1234elena/
 ```
 
 В SQLite хранятся тексты, метрики и пути к картинкам. Сами изображения лежат файлами в `data/media/`.
@@ -205,11 +201,11 @@ git push
 - `/articles` показывает только то, что уже есть в базе.
 - Автопубликации новых статей в Telegram-канал пока нет.
 - MAX пока не реализован.
-- Текущая RSS-лента была тестовой, реальные материалы заказчика готовятся через импорт архива Дзена.
+- RSS-источник Хабра больше не используется.
 
 ## Ближайшие планы
 
-- Поддерживать фоновый RSS-импорт через `CHECK_INTERVAL_SECONDS`.
-- Доработать синхронизацию RSS под реальную ленту заказчика.
+- Добавить тематическую разметку статей Дзена.
+- Добавить навигацию по рубрикам.
 - Позже добавить автопубликацию новых статей.
 - Позже добавить MAX-адаптер.
