@@ -3,7 +3,14 @@ import re
 from typing import Optional
 
 from telegram_max_bot.core.models import ImportStats, IncomingMessage, OutgoingMessage
-from telegram_max_bot.db import get_latest_posts, get_random_post, get_top_posts
+from telegram_max_bot.core.topics import get_topic_by_code
+from telegram_max_bot.db import (
+    get_latest_posts,
+    get_posts_by_topic,
+    get_random_post,
+    get_top_posts,
+    get_topic_counts,
+)
 
 
 def clean_html(raw_html: str, limit: int = 250) -> str:
@@ -30,6 +37,7 @@ class Bot:
                 "/articles - последние статьи\n"
                 "/top - самые читаемые статьи\n"
                 "/random - случайная статья\n"
+                "/topics - рубрики статей\n"
                 "/check - импортировать RSS\n"
                 "/help - помощь\n"
                 "/about - о боте"
@@ -44,6 +52,8 @@ class Bot:
                 "/articles - последние статьи из базы\n"
                 "/top - самые читаемые статьи из базы\n"
                 "/random - случайная статья из базы\n"
+                "/topics - список рубрик\n"
+                "/topic <код> - статьи выбранной рубрики\n"
                 "/check - импортировать RSS сейчас\n"
                 "/help - список команд\n"
                 "/about - информация о боте"
@@ -100,6 +110,46 @@ class Bot:
 
         return OutgoingMessage(text="Случайная статья:\n\n" + self._format_post(post))
 
+    def handle_topics(self) -> OutgoingMessage:
+        topic_counts = get_topic_counts()
+        visible_topics = [(topic, count) for topic, count in topic_counts if count > 0]
+
+        if not visible_topics:
+            return OutgoingMessage(text="Рубрики пока не собраны: в базе нет размеченных статей.")
+
+        lines = ["Рубрики статей:\n"]
+        for topic, count in visible_topics:
+            lines.append(f"/topic {topic.code} - {topic.title} ({count})")
+
+        return OutgoingMessage(text="\n".join(lines))
+
+    def handle_topic(self, topic_code: str) -> OutgoingMessage:
+        topic = get_topic_by_code(topic_code or "")
+
+        if topic is None:
+            return OutgoingMessage(
+                text=(
+                    "Не знаю такую рубрику.\n\n"
+                    "Посмотри список доступных рубрик командой /topics."
+                )
+            )
+
+        posts = get_posts_by_topic(topic.code, limit=5)
+
+        if not posts:
+            return OutgoingMessage(
+                text=(
+                    f"В рубрике «{topic.title}» пока нет статей.\n\n"
+                    "Посмотри другие рубрики командой /topics."
+                )
+            )
+
+        lines = [f"{topic.title}\n{topic.description}\n"]
+        for index, post in enumerate(posts, start=1):
+            lines.append(f"{index}. {self._format_post(post)}")
+
+        return OutgoingMessage(text="\n".join(lines))
+
     def handle_check_result(
         self,
         stats: Optional[ImportStats],
@@ -130,6 +180,10 @@ class Bot:
             return self.handle_top()
         if text == "/random":
             return self.handle_random()
+        if text == "/topics":
+            return self.handle_topics()
+        if text.startswith("/topic "):
+            return self.handle_topic(text.removeprefix("/topic ").strip())
 
         return OutgoingMessage(text=f"Я получил сообщение: {message.text}")
 

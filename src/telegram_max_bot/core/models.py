@@ -23,3 +23,11 @@ class ImportStats:
     @property
     def total(self) -> int:
         return self.created + self.updated + self.unchanged
+
+
+@dataclass(frozen=True)
+class Topic:
+    code: str
+    title: str
+    description: str
+    keywords: tuple[str, ...]

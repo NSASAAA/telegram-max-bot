@@ -3,8 +3,16 @@ import os
 from pathlib import Path
 from typing import Iterable, Optional
 
-from telegram_max_bot.core.models import ImportStats
+from telegram_max_bot.core.models import ImportStats, Topic
+from telegram_max_bot.core.topics import (
+    TOPIC_CLASSIFIER_VERSION,
+    TOPICS,
+    classify_topics,
+)
 from telegram_max_bot.rss_client import RssPost
+
+
+ARTICLE_TOPICS_META_KEY = "article_topics_signature"
 
 
 def get_db_path() -> Path:
@@ -56,6 +64,8 @@ def init_db() -> None:
         )
         _ensure_posts_columns(connection)
         _ensure_article_images_table(connection)
+        _ensure_article_topics_table(connection)
+        _ensure_app_meta_table(connection)
 
 
 def _ensure_posts_columns(connection: sqlite3.Connection) -> None:
@@ -132,6 +142,46 @@ def _ensure_article_images_table(connection: sqlite3.Connection) -> None:
         """
         CREATE INDEX IF NOT EXISTS idx_article_images_article_link
         ON article_images(article_link)
+        """
+    )
+
+
+def _ensure_article_topics_table(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS article_topics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            post_id INTEGER NOT NULL,
+            topic_code TEXT NOT NULL,
+            score INTEGER NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(post_id, topic_code),
+            FOREIGN KEY (post_id) REFERENCES posts(id)
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_article_topics_topic_code
+        ON article_topics(topic_code)
+        """
+    )
+    connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_article_topics_post_id
+        ON article_topics(post_id)
+        """
+    )
+
+
+def _ensure_app_meta_table(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS app_meta (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
         """
     )
 
@@ -340,3 +390,157 @@ def get_random_post() -> Optional[sqlite3.Row]:
             LIMIT 1
             """
         ).fetchone()
+
+
+def get_topic_counts() -> list[tuple[Topic, int]]:
+    init_db()
+    _ensure_article_topics_index()
+
+    with get_connection() as connection:
+        rows = connection.execute(
+            """
+            SELECT topic_code, COUNT(*) AS posts_count
+            FROM article_topics
+            GROUP BY topic_code
+            """
+        ).fetchall()
+
+    counts = {row["topic_code"]: row["posts_count"] for row in rows}
+    return [(topic, counts.get(topic.code, 0)) for topic in TOPICS]
+
+
+def get_posts_by_topic(topic_code: str, limit: int = 10) -> list[sqlite3.Row]:
+    init_db()
+    _ensure_article_topics_index()
+
+    with get_connection() as connection:
+        cursor = connection.execute(
+            """
+            SELECT
+                posts.id,
+                posts.title,
+                posts.link,
+                posts.published,
+                posts.summary,
+                posts.author,
+                posts.categories,
+                posts.views_count,
+                posts.comments_count,
+                posts.cover_image_path,
+                article_topics.score AS topic_score
+            FROM posts
+            JOIN article_topics ON article_topics.post_id = posts.id
+            WHERE article_topics.topic_code = ?
+            ORDER BY
+                article_topics.score DESC,
+                COALESCE(posts.views_count, 0) DESC,
+                CASE
+                    WHEN posts.source_order IS NULL THEN 1
+                    ELSE 0
+                END,
+                posts.source_order ASC,
+                posts.id DESC
+            LIMIT ?
+            """,
+            (topic_code, limit),
+        )
+        return list(cursor.fetchall())
+
+
+def refresh_article_topics() -> int:
+    init_db()
+    with get_connection() as connection:
+        assignments_count = _rebuild_article_topics(connection)
+        signature = _current_posts_signature(connection)
+        _save_meta_value(connection, ARTICLE_TOPICS_META_KEY, signature)
+        return assignments_count
+
+
+def _ensure_article_topics_index() -> int:
+    with get_connection() as connection:
+        signature = _current_posts_signature(connection)
+        stored_signature = _get_meta_value(connection, ARTICLE_TOPICS_META_KEY)
+        topic_rows_count = connection.execute(
+            "SELECT COUNT(*) AS rows_count FROM article_topics"
+        ).fetchone()["rows_count"]
+        posts_count = connection.execute(
+            "SELECT COUNT(*) AS posts_count FROM posts"
+        ).fetchone()["posts_count"]
+
+        if stored_signature == signature and (topic_rows_count > 0 or posts_count == 0):
+            return 0
+
+        assignments_count = _rebuild_article_topics(connection)
+        _save_meta_value(connection, ARTICLE_TOPICS_META_KEY, signature)
+        return assignments_count
+
+
+def _current_posts_signature(connection: sqlite3.Connection) -> str:
+    row = connection.execute(
+        """
+        SELECT
+            COUNT(*) AS posts_count,
+            COALESCE(MAX(id), 0) AS max_id,
+            COALESCE(MAX(last_changed_at), '') AS max_last_changed_at
+        FROM posts
+        """
+    ).fetchone()
+    return (
+        f"{TOPIC_CLASSIFIER_VERSION}:"
+        f"{row['posts_count']}:"
+        f"{row['max_id']}:"
+        f"{row['max_last_changed_at']}"
+    )
+
+
+def _rebuild_article_topics(connection: sqlite3.Connection) -> int:
+    connection.execute("DELETE FROM article_topics")
+    posts = connection.execute(
+        """
+        SELECT id, title, summary, content_text, categories
+        FROM posts
+        """
+    ).fetchall()
+
+    assignments_count = 0
+    for post in posts:
+        matches = classify_topics(
+            title=post["title"] or "",
+            summary=post["summary"] or "",
+            content_text=post["content_text"] or "",
+            categories=post["categories"] or "",
+        )
+        for topic, score in matches:
+            connection.execute(
+                """
+                INSERT INTO article_topics (post_id, topic_code, score)
+                VALUES (?, ?, ?)
+                """,
+                (post["id"], topic.code, score),
+            )
+            assignments_count += 1
+
+    return assignments_count
+
+
+def _get_meta_value(connection: sqlite3.Connection, key: str) -> Optional[str]:
+    row = connection.execute(
+        "SELECT value FROM app_meta WHERE key = ?",
+        (key,),
+    ).fetchone()
+    if row is None:
+        return None
+    return row["value"]
+
+
+def _save_meta_value(connection: sqlite3.Connection, key: str, value: str) -> None:
+    connection.execute(
+        """
+        INSERT INTO app_meta (key, value, updated_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(key) DO UPDATE SET
+            value = excluded.value,
+            updated_at = CURRENT_TIMESTAMP
+        """,
+        (key, value),
+    )
