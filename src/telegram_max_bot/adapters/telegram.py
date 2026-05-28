@@ -6,6 +6,7 @@ from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandl
 
 from telegram_max_bot.core.bot import Bot
 from telegram_max_bot.core.models import IncomingMessage
+from telegram_max_bot.core.topics import TOPICS
 from telegram_max_bot.rss_import import import_from_rss_url
 
 
@@ -41,6 +42,12 @@ class TelegramAdapter:
         application.add_handler(CommandHandler("random", self._handle_random))
         application.add_handler(CommandHandler("topics", self._handle_topics))
         application.add_handler(CommandHandler("topic", self._handle_topic))
+        application.add_handler(
+            CommandHandler(
+                [f"topic_{topic.code}" for topic in TOPICS],
+                self._handle_topic_shortcut,
+            )
+        )
         application.add_handler(CommandHandler("check", self._handle_check))
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self._handle_text))
         application.run_polling()
@@ -112,6 +119,17 @@ class TelegramAdapter:
 
     async def _handle_topic(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         topic_code = context.args[0] if context.args else ""
+        response = self._bot.handle_topic(topic_code)
+        await update.effective_message.reply_text(response.text)
+
+    async def _handle_topic_shortcut(
+        self,
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE,
+    ) -> None:
+        del context
+        command = (update.effective_message.text or "").split()[0].split("@")[0]
+        topic_code = command.removeprefix("/topic_")
         response = self._bot.handle_topic(topic_code)
         await update.effective_message.reply_text(response.text)
 

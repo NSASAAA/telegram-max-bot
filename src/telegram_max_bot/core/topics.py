@@ -177,6 +177,26 @@ def get_topic_by_code(code: str) -> Optional[Topic]:
     return TOPICS_BY_CODE.get(code.strip().lower())
 
 
+def get_topic_command(topic_code: str) -> str:
+    return f"/topic_{topic_code.strip().lower()}"
+
+
+def get_topic_code_from_command(command: str) -> Optional[str]:
+    command_parts = command.strip().split()
+    if not command_parts:
+        return None
+
+    normalized_command = command_parts[0].split("@")[0].lower()
+    if not normalized_command.startswith("/topic_"):
+        return None
+
+    topic_code = normalized_command.removeprefix("/topic_")
+    if topic_code in TOPICS_BY_CODE:
+        return topic_code
+
+    return None
+
+
 def classify_topics(
     *,
     title: str,

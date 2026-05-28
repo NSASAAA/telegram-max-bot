@@ -3,7 +3,11 @@ import re
 from typing import Optional
 
 from telegram_max_bot.core.models import ImportStats, IncomingMessage, OutgoingMessage
-from telegram_max_bot.core.topics import get_topic_by_code
+from telegram_max_bot.core.topics import (
+    get_topic_by_code,
+    get_topic_code_from_command,
+    get_topic_command,
+)
 from telegram_max_bot.db import (
     get_latest_posts,
     get_posts_by_topic,
@@ -52,7 +56,7 @@ class Bot:
                 "/top - самые читаемые статьи из базы\n"
                 "/random - случайная статья из базы\n"
                 "/topics - список рубрик\n"
-                "/topic <код> - статьи выбранной рубрики\n"
+                "/topic_rs - пример рубрики\n"
                 "/help - список команд\n"
                 "/about - информация о боте"
             )
@@ -117,11 +121,14 @@ class Bot:
 
         lines = ["Рубрики статей:\n"]
         for topic, count in visible_topics:
-            lines.append(f"/topic {topic.code} - {topic.title} ({count})")
+            lines.append(f"{get_topic_command(topic.code)} - {topic.title} ({count})")
 
         return OutgoingMessage(text="\n".join(lines))
 
     def handle_topic(self, topic_code: str) -> OutgoingMessage:
+        if not topic_code:
+            return self.handle_topics()
+
         topic = get_topic_by_code(topic_code or "")
 
         if topic is None:
@@ -180,8 +187,13 @@ class Bot:
             return self.handle_random()
         if text == "/topics":
             return self.handle_topics()
+        if text == "/topic":
+            return self.handle_topics()
         if text.startswith("/topic "):
             return self.handle_topic(text.removeprefix("/topic ").strip())
+        topic_code = get_topic_code_from_command(text)
+        if topic_code:
+            return self.handle_topic(topic_code)
 
         return OutgoingMessage(text=f"Я получил сообщение: {message.text}")
 
