@@ -61,10 +61,7 @@ class Bot:
             )
 
         return OutgoingMessage(
-            text=(
-                f"Привет, {name}!\n\n"
-                "Давай начнем знакомство с первой статьей автора."
-            ),
+            text="",
             cards=(self._preview_card(welcome_post),),
         )
 
