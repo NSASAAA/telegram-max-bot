@@ -392,6 +392,41 @@ def get_random_post() -> Optional[sqlite3.Row]:
         ).fetchone()
 
 
+def get_welcome_post() -> Optional[sqlite3.Row]:
+    init_db()
+    with get_connection() as connection:
+        return connection.execute(
+            """
+            SELECT
+                id,
+                title,
+                link,
+                published,
+                summary,
+                author,
+                categories,
+                views_count,
+                comments_count,
+                cover_image_path
+            FROM posts
+            WHERE LOWER(REPLACE(title, 'Ё', 'Е')) LIKE '%привет%знаком%'
+               OR LOWER(REPLACE(title, 'ё', 'е')) LIKE '%привет%знаком%'
+            ORDER BY
+                CASE
+                    WHEN LOWER(REPLACE(title, 'ё', 'е')) = 'привет, давайте знакомиться' THEN 0
+                    ELSE 1
+                END,
+                CASE
+                    WHEN source_order IS NULL THEN 1
+                    ELSE 0
+                END,
+                source_order ASC,
+                id ASC
+            LIMIT 1
+            """
+        ).fetchone()
+
+
 def get_post_by_id(post_id: int) -> Optional[sqlite3.Row]:
     init_db()
     with get_connection() as connection:

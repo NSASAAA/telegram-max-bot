@@ -20,6 +20,7 @@ from telegram_max_bot.db import (
     get_random_post,
     get_top_posts,
     get_topic_counts,
+    get_welcome_post,
 )
 
 
@@ -42,18 +43,29 @@ class Bot:
 
     def handle_start(self, message: IncomingMessage) -> OutgoingMessage:
         name = message.username or "пользователь"
+        welcome_post = get_welcome_post()
+
+        if welcome_post is None:
+            return OutgoingMessage(
+                text=(
+                    f"Привет, {name}!\n\n"
+                    "Я бот-навигатор по статьям автора.\n\n"
+                    "Команды:\n"
+                    "/articles - последние статьи\n"
+                    "/top - самые читаемые статьи\n"
+                    "/random - случайная статья\n"
+                    "/topics - рубрики статей\n"
+                    "/help - помощь\n"
+                    "/about - о боте"
+                )
+            )
+
         return OutgoingMessage(
             text=(
                 f"Привет, {name}!\n\n"
-                "Я бот-навигатор по статьям автора.\n\n"
-                "Команды:\n"
-                "/articles - последние статьи\n"
-                "/top - самые читаемые статьи\n"
-                "/random - случайная статья\n"
-                "/topics - рубрики статей\n"
-                "/help - помощь\n"
-                "/about - о боте"
-            )
+                "Давай начнем знакомство с первой статьи автора."
+            ),
+            cards=(self._preview_card(welcome_post),),
         )
 
     def handle_help(self) -> OutgoingMessage:
