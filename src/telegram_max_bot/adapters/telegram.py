@@ -1,5 +1,5 @@
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Optional
 
@@ -401,8 +401,12 @@ class TelegramAdapter:
             page_offset + page_size if (page_offset + page_size) < total_posts else page_offset
         )
 
+        # Keep topic context visible while user scrolls article cards.
+        topic_header = f"<b>Рубрика:</b> {topic.title}\n\n"
+        topic_card = replace(card, text=f"{topic_header}{card.text}")
+
         return self._screen_from_card(
-            card=card,
+            card=topic_card,
             reply_markup=self._topic_keyboard(
                 index=current_index,
                 total=len(cards),
