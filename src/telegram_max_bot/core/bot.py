@@ -16,6 +16,7 @@ from telegram_max_bot.core.topics import (
 )
 from telegram_max_bot.db import (
     get_latest_posts,
+    get_posts_count_by_topic,
     get_posts_by_topic,
     get_random_post,
     get_top_posts,
@@ -114,7 +115,7 @@ class Bot:
 
         return OutgoingMessage(
             text="Самые читаемые статьи:",
-            cards=self._preview_cards(posts, with_views=True),
+            cards=self._preview_cards(posts),
         )
 
     def handle_random(self) -> OutgoingMessage:
@@ -141,7 +142,7 @@ class Bot:
 
         return OutgoingMessage(text="\n".join(lines))
 
-    def handle_topic(self, topic_code: str) -> OutgoingMessage:
+    def handle_topic(self, topic_code: str, offset: int = 0, limit: int = 5) -> OutgoingMessage:
         if not topic_code:
             return self.handle_topics()
 
@@ -155,7 +156,21 @@ class Bot:
                 )
             )
 
-        posts = get_posts_by_topic(topic.code, limit=5)
+        total_posts = get_posts_count_by_topic(topic.code)
+        if total_posts <= 0:
+            return OutgoingMessage(
+                text=(
+                    f"В рубрике «{topic.title}» пока нет статей.\n\n"
+                    "Посмотри другие рубрики командой /topics."
+                )
+            )
+
+        page_size = max(1, limit)
+        max_offset = max(0, total_posts - 1)
+        safe_offset = max(0, min(offset, max_offset))
+        page_offset = (safe_offset // page_size) * page_size
+
+        posts = get_posts_by_topic(topic.code, limit=page_size, offset=page_offset)
 
         if not posts:
             return OutgoingMessage(
@@ -165,8 +180,15 @@ class Bot:
                 )
             )
 
+        shown_from = page_offset + 1
+        shown_to = page_offset + len(posts)
+
         return OutgoingMessage(
-            text=f"{topic.title}\n{topic.description}",
+            text=(
+                f"{topic.title}\n"
+                f"{topic.description}\n\n"
+                f"Показано {shown_from}-{shown_to} из {total_posts}"
+            ),
             cards=self._preview_cards(posts),
         )
 
@@ -205,33 +227,29 @@ class Bot:
         if text == "/topic":
             return self.handle_topics()
         if text.startswith("/topic "):
-            return self.handle_topic(text.removeprefix("/topic ").strip())
+            return self.handle_topic(text.removeprefix("/topic ").strip(), offset=0)
         topic_code = get_topic_code_from_command(text)
         if topic_code:
-            return self.handle_topic(topic_code)
+            return self.handle_topic(topic_code, offset=0)
 
         return OutgoingMessage(text=f"Я получил сообщение: {message.text}")
 
     def _preview_cards(
         self,
         posts,
-        with_views: bool = False,
     ) -> tuple[PreviewCard, ...]:
-        return tuple(self._preview_card(post, with_views=with_views) for post in posts)
+        return tuple(self._preview_card(post) for post in posts)
 
     def _preview_card(
         self,
         post,
-        with_views: bool = False,
     ) -> PreviewCard:
         title = escape(str(post["title"] or "Без названия"))
         summary = escape(clean_html(post["summary"], limit=180) or "Описание недоступно.")
+        published_label = self._published_label(post)
 
         body_parts: list[str] = []
-        if with_views:
-            views_count = post["views_count"] if "views_count" in post.keys() else None
-            if views_count is not None:
-                body_parts.append(f"Просмотры: {views_count}")
+        body_parts.append(f"Дата: {escape(published_label)}")
         body_parts.append(summary)
         body = "\n".join(body_parts)
 
@@ -241,6 +259,18 @@ class Bot:
             parse_mode="HTML",
             photo_path=self._cover_image_path(post),
         )
+
+    def _published_label(self, post) -> str:
+        if "published_label" in post.keys():
+            published_label = str(post["published_label"] or "").strip()
+            if published_label:
+                return published_label
+
+        published = str(post["published"] or "").strip()
+        if not published:
+            return "не указана"
+
+        return published
 
     def _cover_image_path(self, post) -> Optional[str]:
         cover_path = post["cover_image_path"] if "cover_image_path" in post.keys() else ""

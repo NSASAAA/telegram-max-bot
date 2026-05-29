@@ -321,6 +321,7 @@ def get_latest_posts(limit: int = 10) -> list[sqlite3.Row]:
                 title,
                 link,
                 published,
+                published_label,
                 summary,
                 author,
                 categories,
@@ -352,6 +353,7 @@ def get_top_posts(limit: int = 10) -> list[sqlite3.Row]:
                 title,
                 link,
                 published,
+                published_label,
                 summary,
                 author,
                 categories,
@@ -379,6 +381,7 @@ def get_random_post() -> Optional[sqlite3.Row]:
                 title,
                 link,
                 published,
+                published_label,
                 summary,
                 author,
                 categories,
@@ -401,6 +404,7 @@ def get_welcome_post() -> Optional[sqlite3.Row]:
                 title,
                 link,
                 published,
+                published_label,
                 summary,
                 author,
                 categories,
@@ -528,7 +532,23 @@ def get_topic_counts() -> list[tuple[Topic, int]]:
     return [(topic, counts.get(topic.code, 0)) for topic in TOPICS]
 
 
-def get_posts_by_topic(topic_code: str, limit: int = 10) -> list[sqlite3.Row]:
+def get_posts_count_by_topic(topic_code: str) -> int:
+    init_db()
+    _ensure_article_topics_index()
+
+    with get_connection() as connection:
+        row = connection.execute(
+            """
+            SELECT COUNT(*) AS posts_count
+            FROM article_topics
+            WHERE topic_code = ?
+            """,
+            (topic_code,),
+        ).fetchone()
+        return int(row["posts_count"]) if row else 0
+
+
+def get_posts_by_topic(topic_code: str, limit: int = 10, offset: int = 0) -> list[sqlite3.Row]:
     init_db()
     _ensure_article_topics_index()
 
@@ -540,6 +560,7 @@ def get_posts_by_topic(topic_code: str, limit: int = 10) -> list[sqlite3.Row]:
                 posts.title,
                 posts.link,
                 posts.published,
+                posts.published_label,
                 posts.summary,
                 posts.author,
                 posts.categories,
@@ -560,8 +581,9 @@ def get_posts_by_topic(topic_code: str, limit: int = 10) -> list[sqlite3.Row]:
                 posts.source_order ASC,
                 posts.id DESC
             LIMIT ?
+            OFFSET ?
             """,
-            (topic_code, limit),
+            (topic_code, max(0, limit), max(0, offset)),
         )
         return list(cursor.fetchall())
 

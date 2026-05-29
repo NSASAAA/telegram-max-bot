@@ -16,7 +16,7 @@ from telegram.ext import (
 from telegram_max_bot.core.bot import Bot
 from telegram_max_bot.core.models import IncomingMessage, OutgoingMessage, PreviewCard
 from telegram_max_bot.core.topics import TOPICS, get_topic_by_code
-from telegram_max_bot.db import get_topic_counts
+from telegram_max_bot.db import get_posts_count_by_topic, get_topic_counts
 from telegram_max_bot.rss_import import import_from_rss_url
 
 
@@ -156,7 +156,7 @@ class TelegramAdapter:
 
     async def _handle_topic(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         topic_code = context.args[0] if context.args else ""
-        screen = self._build_topic_screen(topic_code=topic_code, index=0)
+        screen = self._build_topic_screen(topic_code=topic_code, offset=0, index=0)
         await self._send_screen_from_update(update, screen)
 
     async def _handle_topic_shortcut(
@@ -167,7 +167,7 @@ class TelegramAdapter:
         del context
         command = (update.effective_message.text or "").split()[0].split("@")[0]
         topic_code = command.removeprefix("/topic_")
-        screen = self._build_topic_screen(topic_code=topic_code, index=0)
+        screen = self._build_topic_screen(topic_code=topic_code, offset=0, index=0)
         await self._send_screen_from_update(update, screen)
 
     async def _handle_check(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -227,11 +227,16 @@ class TelegramAdapter:
             return self._build_top_screen(index=self._parse_index(data, CB_TOP_PREFIX))
         if data.startswith(CB_TOPIC_PREFIX):
             parts = data.split(":")
-            if len(parts) != 4:
+            if len(parts) == 4:
+                topic_code = parts[2]
+                index = self._safe_int(parts[3], default=0)
+                return self._build_topic_screen(topic_code=topic_code, offset=0, index=index)
+            if len(parts) != 5:
                 return self._build_topics_screen()
             topic_code = parts[2]
-            index = self._safe_int(parts[3], default=0)
-            return self._build_topic_screen(topic_code=topic_code, index=index)
+            offset = self._safe_int(parts[3], default=0)
+            index = self._safe_int(parts[4], default=0)
+            return self._build_topic_screen(topic_code=topic_code, offset=offset, index=index)
         return self._build_home_screen()
 
     def _build_home_screen(self) -> NavigationScreen:
@@ -302,7 +307,7 @@ class TelegramAdapter:
                 [
                     InlineKeyboardButton(
                         text=f"{topic.title} ({count})",
-                        callback_data=f"{CB_TOPIC_PREFIX}{topic.code}:0",
+                        callback_data=f"{CB_TOPIC_PREFIX}{topic.code}:0:0",
                     )
                 ]
             )
@@ -314,7 +319,7 @@ class TelegramAdapter:
                 ],
                 [
                     InlineKeyboardButton("🎲 Случайная", callback_data=CB_RANDOM),
-                    InlineKeyboardButton("ℹ️ О боте", callback_data=CB_ABOUT),
+                    InlineKeyboardButton("🗂 Рубрики", callback_data=CB_TOPICS),
                 ],
                 [InlineKeyboardButton("🏠 Меню", callback_data=CB_HOME)],
             ]
@@ -324,7 +329,7 @@ class TelegramAdapter:
             reply_markup=InlineKeyboardMarkup(rows),
         )
 
-    def _build_topic_screen(self, topic_code: str, index: int) -> NavigationScreen:
+    def _build_topic_screen(self, topic_code: str, offset: int, index: int) -> NavigationScreen:
         topic = get_topic_by_code(topic_code or "")
         if topic is None:
             return NavigationScreen(
@@ -332,7 +337,13 @@ class TelegramAdapter:
                 reply_markup=self._topics_only_keyboard(),
             )
 
-        response = self._bot.handle_topic(topic_code)
+        total_posts = get_posts_count_by_topic(topic.code)
+        page_size = 5
+        max_offset = max(0, total_posts - 1)
+        safe_offset = max(0, min(offset, max_offset))
+        page_offset = (safe_offset // page_size) * page_size
+
+        response = self._bot.handle_topic(topic_code, offset=page_offset, limit=page_size)
         if not response.cards:
             return NavigationScreen(
                 text=response.text,
@@ -340,11 +351,32 @@ class TelegramAdapter:
                 reply_markup=self._topics_only_keyboard(),
             )
 
-        return self._screen_from_card_list(
-            response=response,
-            index=index,
-            prev_data=lambda i: f"{CB_TOPIC_PREFIX}{topic_code}:{i}",
-            next_data=lambda i: f"{CB_TOPIC_PREFIX}{topic_code}:{i}",
+        cards = response.cards
+        max_index = len(cards) - 1
+        current_index = max(0, min(index, max_index))
+        card = cards[current_index]
+
+        prev_index = max_index if current_index == 0 else current_index - 1
+        next_index = 0 if current_index == max_index else current_index + 1
+
+        prev_page_offset = page_offset - page_size if page_offset - page_size >= 0 else page_offset
+        next_page_offset = (
+            page_offset + page_size if (page_offset + page_size) < total_posts else page_offset
+        )
+
+        return self._screen_from_card(
+            card=card,
+            reply_markup=self._topic_keyboard(
+                index=current_index,
+                total=len(cards),
+                topic_code=topic_code,
+                current_page=page_offset // page_size + 1,
+                total_pages=max(1, (total_posts + page_size - 1) // page_size),
+                prev_data=f"{CB_TOPIC_PREFIX}{topic_code}:{page_offset}:{prev_index}",
+                next_data=f"{CB_TOPIC_PREFIX}{topic_code}:{page_offset}:{next_index}",
+                prev_page_data=f"{CB_TOPIC_PREFIX}{topic_code}:{prev_page_offset}:0",
+                next_page_data=f"{CB_TOPIC_PREFIX}{topic_code}:{next_page_offset}:0",
+            ),
         )
 
     def _screen_from_card_list(
@@ -401,7 +433,6 @@ class TelegramAdapter:
                     InlineKeyboardButton("🎲 Случайная", callback_data=CB_RANDOM),
                     InlineKeyboardButton("🗂 Рубрики", callback_data=CB_TOPICS),
                 ],
-                [InlineKeyboardButton("ℹ️ О боте", callback_data=CB_ABOUT)],
             ]
         )
 
@@ -442,6 +473,42 @@ class TelegramAdapter:
                 [
                     InlineKeyboardButton("🗂 Рубрики", callback_data=CB_TOPICS),
                     InlineKeyboardButton("🏠 Меню", callback_data=CB_HOME),
+                ],
+            ]
+        )
+
+    def _topic_keyboard(
+        self,
+        index: int,
+        total: int,
+        topic_code: str,
+        current_page: int,
+        total_pages: int,
+        prev_data: str,
+        next_data: str,
+        prev_page_data: str,
+        next_page_data: str,
+    ) -> InlineKeyboardMarkup:
+        return InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton("⬅️", callback_data=prev_data),
+                    InlineKeyboardButton(f"{index + 1}/{total}", callback_data=CB_NOOP),
+                    InlineKeyboardButton("➡️", callback_data=next_data),
+                ],
+                [
+                    InlineKeyboardButton("⏮ Пред.5", callback_data=prev_page_data),
+                    InlineKeyboardButton(f"Стр. {current_page}/{total_pages}", callback_data=CB_NOOP),
+                    InlineKeyboardButton("След.5 ⏭", callback_data=next_page_data),
+                ],
+                [
+                    InlineKeyboardButton("🗂 Рубрики", callback_data=CB_TOPICS),
+                    InlineKeyboardButton("🏠 Меню", callback_data=CB_HOME),
+                ],
+                [
+                    InlineKeyboardButton("📚 Последние", callback_data=f"{CB_LATEST_PREFIX}0"),
+                    InlineKeyboardButton("🔥 Топ", callback_data=f"{CB_TOP_PREFIX}0"),
+                    InlineKeyboardButton("🎲 Случайная", callback_data=CB_RANDOM),
                 ],
             ]
         )
