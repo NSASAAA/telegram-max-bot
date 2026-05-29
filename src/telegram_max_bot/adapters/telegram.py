@@ -161,28 +161,60 @@ class TelegramAdapter:
         await self._reply(update, response)
 
     async def _reply(self, update: Update, response: OutgoingMessage) -> None:
+        if response.cards:
+            if response.text:
+                await self._reply_message(
+                    update,
+                    text=response.text,
+                    parse_mode=response.parse_mode,
+                    buttons=response.buttons,
+                    photo_path=response.photo_path,
+                )
+            for card in response.cards:
+                await self._reply_message(
+                    update,
+                    text=card.text,
+                    parse_mode=card.parse_mode,
+                    buttons=card.buttons,
+                    photo_path=card.photo_path,
+                )
+            return
+
+        await self._reply_message(
+            update,
+            text=response.text,
+            parse_mode=response.parse_mode,
+            buttons=response.buttons,
+            photo_path=response.photo_path,
+        )
+
+    async def _reply_message(
+        self,
+        update: Update,
+        text: str,
+        parse_mode: Optional[str],
+        buttons,
+        photo_path: Optional[str],
+    ) -> None:
         reply_markup = None
-        if response.buttons:
+        if buttons:
             reply_markup = InlineKeyboardMarkup(
-                [
-                    [InlineKeyboardButton(button.text, url=button.url)]
-                    for button in response.buttons
-                ]
+                [[InlineKeyboardButton(button.text, url=button.url)] for button in buttons]
             )
 
-        photo_path = self._resolve_photo_path(response.photo_path)
-        if photo_path is not None:
+        resolved_photo_path = self._resolve_photo_path(photo_path)
+        if resolved_photo_path is not None:
             await update.effective_message.reply_photo(
-                photo=photo_path,
-                caption=response.text,
-                parse_mode=response.parse_mode,
+                photo=resolved_photo_path,
+                caption=text,
+                parse_mode=parse_mode,
                 reply_markup=reply_markup,
             )
             return
 
         await update.effective_message.reply_text(
-            response.text,
-            parse_mode=response.parse_mode,
+            text,
+            parse_mode=parse_mode,
             reply_markup=reply_markup,
             disable_web_page_preview=True,
         )

@@ -7,6 +7,7 @@ from telegram_max_bot.core.models import (
     IncomingMessage,
     LinkButton,
     OutgoingMessage,
+    PreviewCard,
 )
 from telegram_max_bot.core.topics import (
     get_topic_by_code,
@@ -91,14 +92,9 @@ class Bot:
                 )
             )
 
-        lines = ["Последние статьи:\n"]
-
-        for index, post in enumerate(posts, start=1):
-            lines.append(f"{index}. {self._format_post(post)}")
-
         return OutgoingMessage(
-            text="\n".join(lines),
-            buttons=self._article_buttons(posts),
+            text="Последние статьи:",
+            cards=self._preview_cards(posts),
         )
 
     def handle_top(self) -> OutgoingMessage:
@@ -107,15 +103,9 @@ class Bot:
         if not posts:
             return OutgoingMessage(text="В базе пока нет статей.")
 
-        lines = ["Самые читаемые статьи:\n"]
-        for index, post in enumerate(posts, start=1):
-            views_count = post["views_count"]
-            views_text = f"Просмотры: {views_count}\n" if views_count is not None else ""
-            lines.append(f"{index}. {views_text}{self._format_post(post)}")
-
         return OutgoingMessage(
-            text="\n".join(lines),
-            buttons=self._article_buttons(posts),
+            text="Самые читаемые статьи:",
+            cards=self._preview_cards(posts, with_views=True),
         )
 
     def handle_random(self) -> OutgoingMessage:
@@ -125,14 +115,8 @@ class Bot:
             return OutgoingMessage(text="В базе пока нет статей.")
 
         return OutgoingMessage(
-            text="Случайная статья:\n\n" + self._format_post(
-                post,
-                bold_title=True,
-                html_mode=True,
-            ),
-            buttons=self._article_buttons([post], single_label="Читать"),
-            parse_mode="HTML",
-            photo_path=self._cover_image_path(post),
+            text="Случайная статья:",
+            cards=(self._preview_card(post),),
         )
 
     def handle_topics(self) -> OutgoingMessage:
@@ -172,13 +156,9 @@ class Bot:
                 )
             )
 
-        lines = [f"{topic.title}\n{topic.description}\n"]
-        for index, post in enumerate(posts, start=1):
-            lines.append(f"{index}. {self._format_post(post)}")
-
         return OutgoingMessage(
-            text="\n".join(lines),
-            buttons=self._article_buttons(posts),
+            text=f"{topic.title}\n{topic.description}",
+            cards=self._preview_cards(posts),
         )
 
     def handle_check_result(
@@ -223,26 +203,34 @@ class Bot:
 
         return OutgoingMessage(text=f"Я получил сообщение: {message.text}")
 
-    def _format_post(
+    def _preview_cards(
+        self,
+        posts,
+        with_views: bool = False,
+    ) -> tuple[PreviewCard, ...]:
+        return tuple(self._preview_card(post, with_views=with_views) for post in posts)
+
+    def _preview_card(
         self,
         post,
-        bold_title: bool = False,
-        html_mode: bool = False,
-    ) -> str:
-        raw_title = str(post["title"] or "")
-        summary = clean_html(post["summary"], limit=180)
+        with_views: bool = False,
+    ) -> PreviewCard:
+        title = escape(str(post["title"] or "Без названия"))
+        summary = escape(clean_html(post["summary"], limit=180) or "Описание недоступно.")
 
-        if html_mode:
-            title = escape(raw_title)
-            if bold_title:
-                title = f"<b>{title}</b>"
-            summary = escape(summary)
-        else:
-            title = raw_title
+        body_parts: list[str] = []
+        if with_views:
+            views_count = post["views_count"] if "views_count" in post.keys() else None
+            if views_count is not None:
+                body_parts.append(f"Просмотры: {views_count}")
+        body_parts.append(summary)
+        body = "\n".join(body_parts)
 
-        return (
-            f"{title}\n"
-            f"{summary}\n"
+        return PreviewCard(
+            text=f"<b>{title}</b>\n\n{body}",
+            buttons=self._article_buttons([post], single_label="Читать"),
+            parse_mode="HTML",
+            photo_path=self._cover_image_path(post),
         )
 
     def _cover_image_path(self, post) -> Optional[str]:

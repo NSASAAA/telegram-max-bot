@@ -15,12 +15,21 @@ class OutgoingMessage:
     buttons: tuple["LinkButton", ...] = ()
     parse_mode: Optional[str] = None
     photo_path: Optional[str] = None
+    cards: tuple["PreviewCard", ...] = ()
 
 
 @dataclass(frozen=True)
 class LinkButton:
     text: str
     url: str
+
+
+@dataclass(frozen=True)
+class PreviewCard:
+    text: str
+    buttons: tuple[LinkButton, ...] = ()
+    parse_mode: Optional[str] = None
+    photo_path: Optional[str] = None
 
 
 @dataclass(frozen=True)
