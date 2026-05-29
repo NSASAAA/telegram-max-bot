@@ -1,4 +1,5 @@
 import asyncio
+from pathlib import Path
 from typing import Optional
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -169,11 +170,35 @@ class TelegramAdapter:
                 ]
             )
 
+        photo_path = self._resolve_photo_path(response.photo_path)
+        if photo_path is not None:
+            await update.effective_message.reply_photo(
+                photo=photo_path,
+                caption=response.text,
+                parse_mode=response.parse_mode,
+                reply_markup=reply_markup,
+            )
+            return
+
         await update.effective_message.reply_text(
             response.text,
+            parse_mode=response.parse_mode,
             reply_markup=reply_markup,
             disable_web_page_preview=True,
         )
+
+    def _resolve_photo_path(self, photo_path: Optional[str]) -> Optional[Path]:
+        if not photo_path:
+            return None
+
+        candidate = Path(photo_path)
+        if not candidate.is_absolute():
+            candidate = Path.cwd() / candidate
+
+        if candidate.is_file():
+            return candidate
+
+        return None
 
     def _to_incoming_message(self, update: Update) -> IncomingMessage:
         user = update.effective_user

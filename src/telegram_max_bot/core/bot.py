@@ -1,4 +1,4 @@
-from html import unescape
+from html import escape, unescape
 import re
 from typing import Optional
 
@@ -125,8 +125,14 @@ class Bot:
             return OutgoingMessage(text="В базе пока нет статей.")
 
         return OutgoingMessage(
-            text="Случайная статья:\n\n" + self._format_post(post),
+            text="Случайная статья:\n\n" + self._format_post(
+                post,
+                bold_title=True,
+                html_mode=True,
+            ),
             buttons=self._article_buttons([post], single_label="Читать"),
+            parse_mode="HTML",
+            photo_path=self._cover_image_path(post),
         )
 
     def handle_topics(self) -> OutgoingMessage:
@@ -217,12 +223,33 @@ class Bot:
 
         return OutgoingMessage(text=f"Я получил сообщение: {message.text}")
 
-    def _format_post(self, post) -> str:
+    def _format_post(
+        self,
+        post,
+        bold_title: bool = False,
+        html_mode: bool = False,
+    ) -> str:
+        raw_title = str(post["title"] or "")
         summary = clean_html(post["summary"], limit=180)
+
+        if html_mode:
+            title = escape(raw_title)
+            if bold_title:
+                title = f"<b>{title}</b>"
+            summary = escape(summary)
+        else:
+            title = raw_title
+
         return (
-            f"{post['title']}\n"
+            f"{title}\n"
             f"{summary}\n"
         )
+
+    def _cover_image_path(self, post) -> Optional[str]:
+        cover_path = post["cover_image_path"] if "cover_image_path" in post.keys() else ""
+        if not cover_path:
+            return None
+        return str(cover_path)
 
     def _article_buttons(
         self,

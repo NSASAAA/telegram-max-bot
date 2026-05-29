@@ -13,6 +13,8 @@ class IncomingMessage:
 class OutgoingMessage:
     text: str
     buttons: tuple["LinkButton", ...] = ()
+    parse_mode: Optional[str] = None
+    photo_path: Optional[str] = None
 
 
 @dataclass(frozen=True)
