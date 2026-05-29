@@ -395,8 +395,7 @@ def get_random_post() -> Optional[sqlite3.Row]:
 def get_welcome_post() -> Optional[sqlite3.Row]:
     init_db()
     with get_connection() as connection:
-        return connection.execute(
-            """
+        select_columns = """
             SELECT
                 id,
                 title,
@@ -409,22 +408,54 @@ def get_welcome_post() -> Optional[sqlite3.Row]:
                 comments_count,
                 cover_image_path
             FROM posts
-            WHERE LOWER(REPLACE(title, 'Ё', 'Е')) LIKE '%привет%знаком%'
-               OR LOWER(REPLACE(title, 'ё', 'е')) LIKE '%привет%знаком%'
+        """
+        sort_clause = """
             ORDER BY
-                CASE
-                    WHEN LOWER(REPLACE(title, 'ё', 'е')) = 'привет, давайте знакомиться' THEN 0
-                    ELSE 1
-                END,
                 CASE
                     WHEN source_order IS NULL THEN 1
                     ELSE 0
                 END,
                 source_order ASC,
                 id ASC
-            LIMIT 1
+        """
+
+        for candidate_title in (
+            "Привет. Давайте знакомиться",
+            "Привет, давайте знакомиться",
+            "Привет давайте знакомиться",
+        ):
+            exact_match = connection.execute(
+                f"""
+                {select_columns}
+                WHERE TRIM(title) = ?
+                {sort_clause}
+                LIMIT 1
+                """,
+                (candidate_title,),
+            ).fetchone()
+            if exact_match is not None:
+                return exact_match
+
+        early_posts = connection.execute(
+            f"""
+            {select_columns}
+            {sort_clause}
+            LIMIT 100
             """
-        ).fetchone()
+        ).fetchall()
+        for post in early_posts:
+            normalized_title = _normalize_search_text(post["title"] or "")
+            if "привет" in normalized_title and "знаком" in normalized_title:
+                return post
+
+        return None
+
+
+def _normalize_search_text(value: str) -> str:
+    text = value.casefold().replace("ё", "е")
+    for symbol in (".", ",", "!", "?", ";", ":", "—", "-", "(", ")"):
+        text = text.replace(symbol, " ")
+    return " ".join(text.split())
 
 
 def get_post_by_id(post_id: int) -> Optional[sqlite3.Row]:
