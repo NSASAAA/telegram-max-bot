@@ -227,7 +227,7 @@ class Bot:
         body = "\n".join(body_parts)
 
         return PreviewCard(
-            text=f"<b><u>📰 {title}</u></b>\n\n{body}",
+            text=f"<b>{title}</b>\n\n{body}",
             buttons=self._article_buttons([post], single_label="Читать"),
             parse_mode="HTML",
             photo_path=self._cover_image_path(post),
