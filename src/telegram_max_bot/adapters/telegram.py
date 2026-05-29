@@ -365,14 +365,16 @@ class TelegramAdapter:
         max_index = len(cards) - 1
         current_index = max(0, min(index, max_index))
         card = cards[current_index]
+        prev_index = max_index if current_index == 0 else current_index - 1
+        next_index = 0 if current_index == max_index else current_index + 1
 
         return self._screen_from_card(
             card=card,
             reply_markup=self._article_keyboard(
                 index=current_index,
                 total=len(cards),
-                prev_data=prev_data(max(0, current_index - 1)),
-                next_data=next_data(min(max_index, current_index + 1)),
+                prev_data=prev_data(prev_index),
+                next_data=next_data(next_index),
             ),
         )
 
