@@ -13,6 +13,11 @@ from telegram_max_bot.rss_client import RssPost
 
 
 ARTICLE_TOPICS_META_KEY = "article_topics_signature"
+WELCOME_TITLE_CANDIDATES = (
+    "Привет. Давайте знакомиться",
+    "Привет, давайте знакомиться",
+    "Привет давайте знакомиться",
+)
 
 
 def get_db_path() -> Path:
@@ -47,6 +52,7 @@ def init_db() -> None:
                 reading_time_minutes INTEGER,
                 comments_count INTEGER,
                 cover_image_path TEXT,
+                is_welcome_article INTEGER DEFAULT 0,
                 published_label TEXT,
                 source_order INTEGER,
                 author TEXT,
@@ -63,6 +69,7 @@ def init_db() -> None:
             """
         )
         _ensure_posts_columns(connection)
+        _refresh_welcome_article_marker(connection)
         _ensure_article_images_table(connection)
         _ensure_article_topics_table(connection)
         _ensure_app_meta_table(connection)
@@ -82,6 +89,7 @@ def _ensure_posts_columns(connection: sqlite3.Connection) -> None:
         "reading_time_minutes": "INTEGER",
         "comments_count": "INTEGER",
         "cover_image_path": "TEXT",
+        "is_welcome_article": "INTEGER DEFAULT 0",
         "published_label": "TEXT",
         "source_order": "INTEGER",
         "source": "TEXT DEFAULT 'rss'",
@@ -106,6 +114,42 @@ def _ensure_posts_columns(connection: sqlite3.Connection) -> None:
             last_seen_at = COALESCE(last_seen_at, created_at, CURRENT_TIMESTAMP),
             last_changed_at = COALESCE(last_changed_at, created_at, CURRENT_TIMESTAMP)
         """
+    )
+
+
+def _refresh_welcome_article_marker(connection: sqlite3.Connection) -> None:
+    welcome_post_id = _find_welcome_post_id(connection)
+    if welcome_post_id is None:
+        return
+
+    current_rows = connection.execute(
+        """
+        SELECT id
+        FROM posts
+        WHERE COALESCE(is_welcome_article, 0) = 1
+        """
+    ).fetchall()
+    current_ids = [int(row["id"]) for row in current_rows]
+
+    if current_ids == [welcome_post_id]:
+        return
+
+    if current_ids:
+        connection.execute(
+            """
+            UPDATE posts
+            SET is_welcome_article = 0
+            WHERE COALESCE(is_welcome_article, 0) = 1
+            """
+        )
+
+    connection.execute(
+        """
+        UPDATE posts
+        SET is_welcome_article = 1
+        WHERE id = ?
+        """,
+        (welcome_post_id,),
     )
 
 
@@ -329,6 +373,7 @@ def get_latest_posts(limit: int = 10) -> list[sqlite3.Row]:
                 comments_count,
                 cover_image_path
             FROM posts
+            WHERE COALESCE(is_welcome_article, 0) = 0
             ORDER BY
                 CASE
                     WHEN source_order IS NULL THEN 1
@@ -361,6 +406,7 @@ def get_top_posts(limit: int = 10) -> list[sqlite3.Row]:
                 comments_count,
                 cover_image_path
             FROM posts
+            WHERE COALESCE(is_welcome_article, 0) = 0
             ORDER BY
                 COALESCE(views_count, 0) DESC,
                 id DESC
@@ -389,6 +435,7 @@ def get_random_post() -> Optional[sqlite3.Row]:
                 comments_count,
                 cover_image_path
             FROM posts
+            WHERE COALESCE(is_welcome_article, 0) = 0
             ORDER BY RANDOM()
             LIMIT 1
             """
@@ -413,6 +460,17 @@ def get_welcome_post() -> Optional[sqlite3.Row]:
                 cover_image_path
             FROM posts
         """
+        flagged_post = connection.execute(
+            f"""
+            {select_columns}
+            WHERE COALESCE(is_welcome_article, 0) = 1
+            ORDER BY id ASC
+            LIMIT 1
+            """
+        ).fetchone()
+        if flagged_post is not None:
+            return flagged_post
+
         sort_clause = """
             ORDER BY
                 CASE
@@ -423,11 +481,7 @@ def get_welcome_post() -> Optional[sqlite3.Row]:
                 id ASC
         """
 
-        for candidate_title in (
-            "Привет. Давайте знакомиться",
-            "Привет, давайте знакомиться",
-            "Привет давайте знакомиться",
-        ):
+        for candidate_title in WELCOME_TITLE_CANDIDATES:
             exact_match = connection.execute(
                 f"""
                 {select_columns}
@@ -453,6 +507,49 @@ def get_welcome_post() -> Optional[sqlite3.Row]:
                 return post
 
         return None
+
+
+def _find_welcome_post_id(connection: sqlite3.Connection) -> Optional[int]:
+    for candidate_title in WELCOME_TITLE_CANDIDATES:
+        row = connection.execute(
+            """
+            SELECT id
+            FROM posts
+            WHERE TRIM(title) = ?
+            ORDER BY
+                CASE
+                    WHEN source_order IS NULL THEN 1
+                    ELSE 0
+                END,
+                source_order ASC,
+                id ASC
+            LIMIT 1
+            """,
+            (candidate_title,),
+        ).fetchone()
+        if row is not None:
+            return int(row["id"])
+
+    early_posts = connection.execute(
+        """
+        SELECT id, title
+        FROM posts
+        ORDER BY
+            CASE
+                WHEN source_order IS NULL THEN 1
+                ELSE 0
+            END,
+            source_order ASC,
+            id ASC
+        LIMIT 100
+        """
+    ).fetchall()
+    for post in early_posts:
+        normalized_title = _normalize_search_text(post["title"] or "")
+        if "привет" in normalized_title and "знаком" in normalized_title:
+            return int(post["id"])
+
+    return None
 
 
 def _normalize_search_text(value: str) -> str:
@@ -522,8 +619,10 @@ def get_topic_counts() -> list[tuple[Topic, int]]:
     with get_connection() as connection:
         rows = connection.execute(
             """
-            SELECT topic_code, COUNT(*) AS posts_count
+            SELECT article_topics.topic_code, COUNT(*) AS posts_count
             FROM article_topics
+            JOIN posts ON posts.id = article_topics.post_id
+            WHERE COALESCE(posts.is_welcome_article, 0) = 0
             GROUP BY topic_code
             """
         ).fetchall()
@@ -541,7 +640,9 @@ def get_posts_count_by_topic(topic_code: str) -> int:
             """
             SELECT COUNT(*) AS posts_count
             FROM article_topics
+            JOIN posts ON posts.id = article_topics.post_id
             WHERE topic_code = ?
+                AND COALESCE(posts.is_welcome_article, 0) = 0
             """,
             (topic_code,),
         ).fetchone()
@@ -571,6 +672,7 @@ def get_posts_by_topic(topic_code: str, limit: int = 10, offset: int = 0) -> lis
             FROM posts
             JOIN article_topics ON article_topics.post_id = posts.id
             WHERE article_topics.topic_code = ?
+                AND COALESCE(posts.is_welcome_article, 0) = 0
             ORDER BY
                 article_topics.score DESC,
                 COALESCE(posts.views_count, 0) DESC,
