@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, Update
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -306,7 +306,19 @@ class TelegramAdapter:
                     )
                 ]
             )
-        rows.append([InlineKeyboardButton("🏠 Меню", callback_data=CB_HOME)])
+        rows.extend(
+            [
+                [
+                    InlineKeyboardButton("📚 Последние", callback_data=f"{CB_LATEST_PREFIX}0"),
+                    InlineKeyboardButton("🔥 Топ", callback_data=f"{CB_TOP_PREFIX}0"),
+                ],
+                [
+                    InlineKeyboardButton("🎲 Случайная", callback_data=CB_RANDOM),
+                    InlineKeyboardButton("ℹ️ О боте", callback_data=CB_ABOUT),
+                ],
+                [InlineKeyboardButton("🏠 Меню", callback_data=CB_HOME)],
+            ]
+        )
         return NavigationScreen(
             text="Выбери рубрику:",
             reply_markup=InlineKeyboardMarkup(rows),
@@ -461,11 +473,59 @@ class TelegramAdapter:
         if message is None:
             return
 
+        edited_in_place = await self._try_edit_callback_message(message=message, screen=screen)
+        if edited_in_place:
+            return
+
         await self._send_screen(chat_id=message.chat_id, screen=screen)
         try:
             await message.delete()
-        except Exception:
-            pass
+        except Exception as delete_error:  # pragma: no cover - defensive log path
+            print(f"Navigation fallback delete failed: {delete_error}")
+
+    async def _try_edit_callback_message(self, message, screen: NavigationScreen) -> bool:
+        target_photo_path = self._resolve_photo_path(screen.photo_path)
+
+        try:
+            if target_photo_path is not None:
+                with target_photo_path.open("rb") as photo_file:
+                    await message.edit_media(
+                        media=InputMediaPhoto(
+                            media=photo_file,
+                            caption=screen.text,
+                            parse_mode=screen.parse_mode,
+                        ),
+                        reply_markup=screen.reply_markup,
+                    )
+                return True
+
+            has_media = bool(
+                message.photo
+                or message.video
+                or message.animation
+                or message.document
+            )
+
+            if has_media and len(screen.text) <= 1024:
+                await message.edit_caption(
+                    caption=screen.text,
+                    parse_mode=screen.parse_mode,
+                    reply_markup=screen.reply_markup,
+                )
+                return True
+
+            if not has_media:
+                await message.edit_text(
+                    text=screen.text or " ",
+                    parse_mode=screen.parse_mode,
+                    reply_markup=screen.reply_markup,
+                    disable_web_page_preview=True,
+                )
+                return True
+        except Exception as edit_error:  # pragma: no cover - defensive log path
+            print(f"Navigation in-place edit failed: {edit_error}")
+
+        return False
 
     async def _send_screen(self, chat_id: int, screen: NavigationScreen) -> None:
         if self._application is None:
