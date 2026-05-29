@@ -13,7 +13,7 @@ Python-бот для Telegram с перспективой добавления M
 - Показывает анонсы статей в формате: жирный заголовок + пустая строка + превью + обложка.
 - Поддерживает интерактивную навигацию inline-кнопками (`Последние`, `Топ`, `Случайная`, `Рубрики`).
 - При навигации старый экран удаляется и заменяется новым, чтобы не накапливать длинную ленту сообщений.
-- Показывает рубрики статей командами `/topics` и `/topic_<код>`, например `/topic_rs_basics`.
+- Показывает рубрики статей командами `/topics` и `/topic_<код>`, например `/topic_rs_life`.
 - Имеет техническую основу веб-читателя статей, но кнопки `Читать` в Telegram временно отключены до Mini App.
 - Запускается на VPS через Docker Compose.
 
@@ -26,7 +26,7 @@ Python-бот для Telegram с перспективой добавления M
 - `/top` - самые читаемые статьи из базы
 - `/random` - случайная статья из базы
 - `/topics` - список рубрик статей
-- `/topic_<код>` - статьи выбранной рубрики (пример: `/topic_rs_basics`)
+- `/topic_<код>` - статьи выбранной рубрики (пример: `/topic_rs_life`)
 - любой текст - ответ `Я получил сообщение: <текст>`
 
 Основной пользовательский поток сейчас идет через inline-кнопки под сообщением, а не через ручной ввод команд.
@@ -53,42 +53,31 @@ Python-бот для Telegram с перспективой добавления M
 - одна статья может попасть в несколько рубрик;
 - но не более чем в 3 рубрики одновременно;
 - рубрики с нулем статей в `topics` не показываются.
+- текущий набор — 16 рубрик.
 
 Доступные коды рубрик:
 
-- `/topic_rs_basics` - РС и симптомы
+- `/topic_rs_life` - РС и жизнь
 - `/topic_rs_treatment` - Терапия РС
-- `/topic_rs_daily` - Семья и РС
-- `/topic_marriage_roles` - Роли в браке
-- `/topic_marriage_conflict` - Кризисы брака
 - `/topic_marriage_support` - Любовь и поддержка
-- `/topic_inlaws` - Свекровь и родня
-- `/topic_parenting_small` - Малыши дома
-- `/topic_parenting_teens` - Подростки
-- `/topic_education_school` - Школа и оценки
-- `/topic_education_home` - Учеба дома
-- `/topic_children_media` - Отдых с детьми
+- `/topic_marriage_crisis` - Кризисы брака
+- `/topic_family_inlaws` - Свекровь и родня
+- `/topic_children_parenting` - Малыши и подростки
+- `/topic_children_education` - Школа и учеба
+- `/topic_children_leisure` - Отдых с детьми
 - `/topic_women_boundaries` - Личные границы
 - `/topic_women_load` - Женская нагрузка
-- `/topic_women_feminism` - Женский взгляд
-- `/topic_psy_narcissism` - Нарциссизм
-- `/topic_psy_trauma` - Травма и стыд
-- `/topic_psy_stress` - Стресс и тревога
-- `/topic_psy_growth` - Личный рост
-- `/topic_faith_church` - Церковная жизнь
+- `/topic_psy_narc_trauma` - Нарциссизм и травма
+- `/topic_psy_stress_growth` - Стресс и рост
 - `/topic_faith_questions` - Вопросы веры
-- `/topic_faith_holidays` - Праздники и пост
-- `/topic_moscow_city` - Москва и прогулки
-- `/topic_culture_films` - Кино
-- `/topic_culture_books` - Книги
-- `/topic_culture_events` - Музеи и театр
-- `/topic_daily_money` - Деньги и работа
-- `/topic_daily_household` - Дом и рутина
+- `/topic_faith_church` - Церковная жизнь
+- `/topic_moscow_culture` - Москва и культура
+- `/topic_money_daily` - Деньги и быт
 
 Пример:
 
 ```text
-/topic_rs_basics
+/topic_rs_life
 ```
 
 Старый формат `/topic rs` пока поддерживается для ручного ввода, но в интерфейсе показываются цельные кликабельные команды без пробела.
