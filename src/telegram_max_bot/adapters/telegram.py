@@ -355,9 +355,15 @@ class TelegramAdapter:
         max_index = len(cards) - 1
         current_index = max(0, min(index, max_index))
         card = cards[current_index]
+        global_index = page_offset + current_index
 
-        prev_index = max_index if current_index == 0 else current_index - 1
-        next_index = 0 if current_index == max_index else current_index + 1
+        prev_global_index = (global_index - 1) % total_posts
+        next_global_index = (global_index + 1) % total_posts
+
+        prev_offset = (prev_global_index // page_size) * page_size
+        prev_index = prev_global_index - prev_offset
+        next_offset = (next_global_index // page_size) * page_size
+        next_index = next_global_index - next_offset
 
         prev_page_offset = page_offset - page_size if page_offset - page_size >= 0 else page_offset
         next_page_offset = (
@@ -372,8 +378,8 @@ class TelegramAdapter:
                 topic_code=topic_code,
                 current_page=page_offset // page_size + 1,
                 total_pages=max(1, (total_posts + page_size - 1) // page_size),
-                prev_data=f"{CB_TOPIC_PREFIX}{topic_code}:{page_offset}:{prev_index}",
-                next_data=f"{CB_TOPIC_PREFIX}{topic_code}:{page_offset}:{next_index}",
+                prev_data=f"{CB_TOPIC_PREFIX}{topic_code}:{prev_offset}:{prev_index}",
+                next_data=f"{CB_TOPIC_PREFIX}{topic_code}:{next_offset}:{next_index}",
                 prev_page_data=f"{CB_TOPIC_PREFIX}{topic_code}:{prev_page_offset}:0",
                 next_page_data=f"{CB_TOPIC_PREFIX}{topic_code}:{next_page_offset}:0",
             ),
