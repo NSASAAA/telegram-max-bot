@@ -248,10 +248,7 @@ class Bot:
         summary = escape(clean_html(post["summary"], limit=180) or "Описание недоступно.")
         published_label = self._published_label(post)
 
-        body_parts: list[str] = []
-        body_parts.append(f"Дата: {escape(published_label)}")
-        body_parts.append(summary)
-        body = "\n".join(body_parts)
+        body = f"{escape(published_label)}\n\n{summary}"
 
         return PreviewCard(
             text=f"<b>{title}</b>\n\n{body}",
