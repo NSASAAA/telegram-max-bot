@@ -8,6 +8,7 @@ from telegram_max_bot.core.topics import (
     TOPIC_CLASSIFIER_VERSION,
     TOPICS,
     classify_topics,
+    get_topics_for_display,
 )
 from telegram_max_bot.rss_client import RssPost
 
@@ -628,7 +629,7 @@ def get_topic_counts() -> list[tuple[Topic, int]]:
         ).fetchall()
 
     counts = {row["topic_code"]: row["posts_count"] for row in rows}
-    return [(topic, counts.get(topic.code, 0)) for topic in TOPICS]
+    return [(topic, counts.get(topic.code, 0)) for topic in get_topics_for_display()]
 
 
 def get_posts_count_by_topic(topic_code: str) -> int:

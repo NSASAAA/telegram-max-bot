@@ -9,7 +9,7 @@ TOPIC_CLASSIFIER_VERSION = "2026-05-30-soft-v2"
 TOPICS: tuple[Topic, ...] = (
     Topic(
         code="rs_basics",
-        title="РС: основы и симптомы",
+        title="РС и симптомы",
         description="Базовые материалы о рассеянном склерозе, симптомах и состоянии.",
         keywords=(
             "рассеянн",
@@ -23,7 +23,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="rs_treatment",
-        title="РС: лечение и медицина",
+        title="Терапия РС",
         description="Терапия, ПИТРС, врачи, анализы, медицина и лечение РС.",
         keywords=(
             "питрс",
@@ -40,7 +40,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="rs_daily",
-        title="РС: быт и жизнь семьи",
+        title="Семья и РС",
         description="Повседневная жизнь с РС, нагрузка семьи и адаптация.",
         keywords=(
             "инвалидност",
@@ -55,7 +55,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="marriage_roles",
-        title="Брак: роли и ожидания",
+        title="Роли в браке",
         description="Роли мужа и жены, ожидания в браке и семейные сценарии.",
         keywords=(
             "брак",
@@ -71,7 +71,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="marriage_conflict",
-        title="Брак: конфликты и кризисы",
+        title="Кризисы брака",
         description="Сложные периоды брака, конфликты, разводные и пограничные темы.",
         keywords=(
             "конфликт",
@@ -87,7 +87,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="marriage_support",
-        title="Брак: поддержка и близость",
+        title="Любовь и поддержка",
         description="Взаимная поддержка супругов, забота, близость и командность в семье.",
         keywords=(
             "поддерж",
@@ -102,7 +102,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="inlaws",
-        title="Родня и границы семьи",
+        title="Свекровь и родня",
         description="Отношения со свекровью, тещей и расширенной семьей.",
         keywords=(
             "свекров",
@@ -115,7 +115,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="parenting_small",
-        title="Дети: ранний возраст",
+        title="Малыши дома",
         description="Малыши, дошкольный возраст, детский сад и первые этапы воспитания.",
         keywords=(
             "ребен",
@@ -129,7 +129,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="parenting_teens",
-        title="Дети: подростки",
+        title="Подростки",
         description="Подростковый возраст, взросление, коммуникация с сыновьями и дочерьми.",
         keywords=(
             "подрост",
@@ -143,7 +143,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="education_school",
-        title="Образование: школа",
+        title="Школа и оценки",
         description="Школа, учителя, уроки, оценки и учебные траектории.",
         keywords=(
             "школ",
@@ -158,7 +158,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="education_home",
-        title="Образование: дома",
+        title="Учеба дома",
         description="Домашнее и семейное обучение, альтернативные форматы учебы.",
         keywords=(
             "домашн обуч",
@@ -172,7 +172,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="children_media",
-        title="Дети: фильмы и книги",
+        title="Отдых с детьми",
         description="Контент для семейного просмотра и чтения с детьми.",
         keywords=(
             "смотрим фильм",
@@ -186,7 +186,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="women_boundaries",
-        title="Женщины: границы",
+        title="Личные границы",
         description="Личные границы, право на себя и отказ от разрушающих сценариев.",
         keywords=(
             "границ",
@@ -199,7 +199,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="women_load",
-        title="Женщины: нагрузка",
+        title="Женская нагрузка",
         description="Перегруз, самопожертвование, материнская и бытовая усталость.",
         keywords=(
             "самопожертв",
@@ -214,7 +214,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="women_feminism",
-        title="Женщины: феминизм и роль",
+        title="Женский взгляд",
         description="Женская роль, феминизм, социальные ожидания и стереотипы.",
         keywords=(
             "феминизм",
@@ -228,7 +228,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="psy_narcissism",
-        title="Психология: нарциссизм",
+        title="Нарциссизм",
         description="Нарциссизм, нарциссические сценарии и последствия в отношениях.",
         keywords=(
             "нарцисс",
@@ -241,7 +241,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="psy_trauma",
-        title="Психология: травма",
+        title="Травма и стыд",
         description="Психологическая травма, стыд, вина и трудный эмоциональный опыт.",
         keywords=(
             "травм",
@@ -255,7 +255,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="psy_stress",
-        title="Психология: стресс",
+        title="Стресс и тревога",
         description="Стресс, тревога, выгорание и способы справляться с напряжением.",
         keywords=(
             "стресс",
@@ -269,7 +269,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="psy_growth",
-        title="Психология: развитие",
+        title="Личный рост",
         description="Осознанность, рост, принятие, изменения и психологическая зрелость.",
         keywords=(
             "осознан",
@@ -283,7 +283,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="faith_church",
-        title="Вера: церковная жизнь",
+        title="Церковная жизнь",
         description="Храм, служба, литургия, молитвенная и церковная практика.",
         keywords=(
             "храм",
@@ -298,7 +298,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="faith_questions",
-        title="Вера: трудные вопросы",
+        title="Вопросы веры",
         description="Вопросы о вере, смысле, сомнениях и духовном пути.",
         keywords=(
             "почему бог",
@@ -313,7 +313,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="faith_holidays",
-        title="Вера: праздники и традиции",
+        title="Праздники и пост",
         description="Православные праздники, посты и церковные традиции.",
         keywords=(
             "праздник",
@@ -328,7 +328,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="moscow_city",
-        title="Москва: город и маршруты",
+        title="Москва и прогулки",
         description="Городские маршруты, прогулки, места и повседневная Москва.",
         keywords=(
             "москв",
@@ -342,7 +342,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="culture_films",
-        title="Культура: кино",
+        title="Кино",
         description="Фильмы, семейный просмотр и обсуждение кино.",
         keywords=(
             "фильм",
@@ -355,7 +355,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="culture_books",
-        title="Культура: книги",
+        title="Книги",
         description="Книги, чтение и литературные рекомендации.",
         keywords=(
             "книг",
@@ -369,7 +369,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="culture_events",
-        title="Культура: события и места",
+        title="Музеи и театр",
         description="Музеи, театры, выставки, культурные события и пространства.",
         keywords=(
             "музе",
@@ -383,7 +383,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="daily_money",
-        title="Быт: деньги и работа",
+        title="Деньги и работа",
         description="Доходы, расходы, работа и бытовая финансовая реальность.",
         keywords=(
             "деньг",
@@ -398,7 +398,7 @@ TOPICS: tuple[Topic, ...] = (
     ),
     Topic(
         code="daily_household",
-        title="Быт: дом и рутина",
+        title="Дом и рутина",
         description="Домашняя рутина, хозяйство, готовка, уборка и ежедневные задачи.",
         keywords=(
             "быт",
@@ -414,6 +414,39 @@ TOPICS: tuple[Topic, ...] = (
 )
 
 TOPICS_BY_CODE = {topic.code: topic for topic in TOPICS}
+
+# Separate display order from classifier order:
+# neighbors should be visually/semanticly diverse in Telegram UI.
+TOPIC_DISPLAY_ORDER_CODES: tuple[str, ...] = (
+    "marriage_support",
+    "rs_basics",
+    "culture_books",
+    "women_load",
+    "moscow_city",
+    "rs_treatment",
+    "parenting_teens",
+    "faith_questions",
+    "daily_money",
+    "women_feminism",
+    "culture_films",
+    "parenting_small",
+    "psy_growth",
+    "rs_daily",
+    "culture_events",
+    "marriage_roles",
+    "psy_stress",
+    "faith_church",
+    "children_media",
+    "marriage_conflict",
+    "daily_household",
+    "women_boundaries",
+    "education_school",
+    "faith_holidays",
+    "psy_narcissism",
+    "education_home",
+    "psy_trauma",
+    "inlaws",
+)
 
 
 def get_topic_by_code(code: str) -> Optional[Topic]:
@@ -438,6 +471,25 @@ def get_topic_code_from_command(command: str) -> Optional[str]:
         return topic_code
 
     return None
+
+
+def get_topics_for_display() -> tuple[Topic, ...]:
+    display_topics: list[Topic] = []
+    used_codes: set[str] = set()
+
+    for code in TOPIC_DISPLAY_ORDER_CODES:
+        topic = TOPICS_BY_CODE.get(code)
+        if topic is None:
+            continue
+        display_topics.append(topic)
+        used_codes.add(code)
+
+    for topic in TOPICS:
+        if topic.code in used_codes:
+            continue
+        display_topics.append(topic)
+
+    return tuple(display_topics)
 
 
 def classify_topics(

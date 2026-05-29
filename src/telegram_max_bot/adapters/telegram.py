@@ -25,6 +25,7 @@ CB_ABOUT = "nav:about"
 CB_TOPICS = "nav:topics"
 CB_RANDOM = "nav:random"
 CB_NOOP = "nav:noop"
+CB_TOPICS_PAGE_PREFIX = "nav:topics_page:"
 CB_LATEST_PREFIX = "nav:latest:"
 CB_TOP_PREFIX = "nav:top:"
 CB_TOPIC_PREFIX = "nav:topic:"
@@ -218,9 +219,11 @@ class TelegramAdapter:
         if data == CB_ABOUT:
             return self._build_about_screen()
         if data == CB_TOPICS:
-            return self._build_topics_screen()
+            return self._build_topics_screen(page=0)
         if data == CB_RANDOM:
             return self._build_random_screen()
+        if data.startswith(CB_TOPICS_PAGE_PREFIX):
+            return self._build_topics_screen(page=self._parse_index(data, CB_TOPICS_PAGE_PREFIX))
         if data.startswith(CB_LATEST_PREFIX):
             return self._build_articles_screen(index=self._parse_index(data, CB_LATEST_PREFIX))
         if data.startswith(CB_TOP_PREFIX):
@@ -293,7 +296,7 @@ class TelegramAdapter:
             reply_markup=self._random_keyboard(),
         )
 
-    def _build_topics_screen(self) -> NavigationScreen:
+    def _build_topics_screen(self, page: int = 0) -> NavigationScreen:
         topic_counts = [(topic, count) for topic, count in get_topic_counts() if count > 0]
         if not topic_counts:
             return NavigationScreen(
@@ -301,16 +304,44 @@ class TelegramAdapter:
                 reply_markup=self._main_menu_keyboard(),
             )
 
+        page_size = 8
+        total_topics = len(topic_counts)
+        total_pages = max(1, (total_topics + page_size - 1) // page_size)
+        safe_page = page % total_pages
+        start = safe_page * page_size
+        end = min(start + page_size, total_topics)
+        page_topics = topic_counts[start:end]
+
         rows: list[list[InlineKeyboardButton]] = []
-        for topic, count in topic_counts:
+        for index in range(0, len(page_topics), 2):
+            left_topic, left_count = page_topics[index]
+            row = [
+                InlineKeyboardButton(
+                    text=f"{left_topic.title} ({left_count})",
+                    callback_data=f"{CB_TOPIC_PREFIX}{left_topic.code}:0:0",
+                )
+            ]
+            if index + 1 < len(page_topics):
+                right_topic, right_count = page_topics[index + 1]
+                row.append(
+                    InlineKeyboardButton(
+                        text=f"{right_topic.title} ({right_count})",
+                        callback_data=f"{CB_TOPIC_PREFIX}{right_topic.code}:0:0",
+                    )
+                )
+            rows.append(row)
+
+        if total_pages > 1:
+            prev_page = (safe_page - 1) % total_pages
+            next_page = (safe_page + 1) % total_pages
             rows.append(
                 [
-                    InlineKeyboardButton(
-                        text=f"{topic.title} ({count})",
-                        callback_data=f"{CB_TOPIC_PREFIX}{topic.code}:0:0",
-                    )
+                    InlineKeyboardButton("⬅️ Категории", callback_data=f"{CB_TOPICS_PAGE_PREFIX}{prev_page}"),
+                    InlineKeyboardButton(f"{safe_page + 1}/{total_pages}", callback_data=CB_NOOP),
+                    InlineKeyboardButton("Категории ➡️", callback_data=f"{CB_TOPICS_PAGE_PREFIX}{next_page}"),
                 ]
             )
+
         rows.extend(
             [
                 [
@@ -325,7 +356,7 @@ class TelegramAdapter:
             ]
         )
         return NavigationScreen(
-            text="Выбери рубрику:",
+            text=f"Выбери рубрику ({start + 1}-{end} из {total_topics}):",
             reply_markup=InlineKeyboardMarkup(rows),
         )
 
