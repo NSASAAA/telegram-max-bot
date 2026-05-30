@@ -16,7 +16,7 @@ from telegram.ext import (
 from telegram_max_bot.core.bot import Bot
 from telegram_max_bot.core.models import IncomingMessage, OutgoingMessage, PreviewCard
 from telegram_max_bot.core.topics import TOPICS, get_topic_by_code
-from telegram_max_bot.db import get_posts_count_by_topic, get_topic_counts
+from telegram_max_bot.db import get_feed_posts_count, get_posts_count_by_topic, get_topic_counts
 from telegram_max_bot.rss_import import import_from_rss_url
 
 
@@ -26,6 +26,7 @@ CB_TOPICS = "nav:topics"
 CB_RANDOM = "nav:random"
 CB_NOOP = "nav:noop"
 CB_TOPICS_PAGE_PREFIX = "nav:topics_page:"
+CB_FEED_PREFIX = "nav:feed:"
 CB_LATEST_PREFIX = "nav:latest:"
 CB_TOP_PREFIX = "nav:top:"
 CB_TOPIC_PREFIX = "nav:topic:"
@@ -68,6 +69,7 @@ class TelegramAdapter:
         application.add_handler(CommandHandler("start", self._handle_start))
         application.add_handler(CommandHandler("help", self._handle_help))
         application.add_handler(CommandHandler("about", self._handle_about))
+        application.add_handler(CommandHandler("feed", self._handle_feed))
         application.add_handler(CommandHandler("articles", self._handle_articles))
         application.add_handler(CommandHandler("top", self._handle_top))
         application.add_handler(CommandHandler("random", self._handle_random))
@@ -138,6 +140,11 @@ class TelegramAdapter:
     async def _handle_articles(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         del context
         screen = self._build_articles_screen(index=0)
+        await self._send_screen_from_update(update, screen)
+
+    async def _handle_feed(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        del context
+        screen = self._build_feed_screen(index=0)
         await self._send_screen_from_update(update, screen)
 
     async def _handle_top(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -224,6 +231,8 @@ class TelegramAdapter:
             return self._build_random_screen()
         if data.startswith(CB_TOPICS_PAGE_PREFIX):
             return self._build_topics_screen(page=self._parse_index(data, CB_TOPICS_PAGE_PREFIX))
+        if data.startswith(CB_FEED_PREFIX):
+            return self._build_feed_screen(index=self._parse_index(data, CB_FEED_PREFIX))
         if data.startswith(CB_LATEST_PREFIX):
             return self._build_articles_screen(index=self._parse_index(data, CB_LATEST_PREFIX))
         if data.startswith(CB_TOP_PREFIX):
@@ -272,6 +281,45 @@ class TelegramAdapter:
             index=index,
             prev_data=lambda i: f"{CB_LATEST_PREFIX}{i}",
             next_data=lambda i: f"{CB_LATEST_PREFIX}{i}",
+        )
+
+    def _build_feed_screen(self, index: int) -> NavigationScreen:
+        total_posts = get_feed_posts_count()
+        if total_posts <= 0:
+            return NavigationScreen(
+                text="В базе пока нет статей.",
+                reply_markup=self._main_menu_keyboard(),
+            )
+
+        max_index = total_posts - 1
+        current_index = max(0, min(index, max_index))
+        response = self._bot.handle_feed(index=current_index)
+        if not response.cards:
+            return NavigationScreen(
+                text=response.text,
+                parse_mode=response.parse_mode,
+                reply_markup=self._main_menu_keyboard(),
+            )
+
+        card = response.cards[0]
+        feed_header = f"<b>Лента</b> ({current_index + 1}/{total_posts})\n\n"
+        feed_card = replace(card, text=f"{feed_header}{card.text}")
+
+        prev_index = max(0, current_index - 1)
+        next_index = min(max_index, current_index + 1)
+        prev_fast_index = max(0, current_index - 10)
+        next_fast_index = min(max_index, current_index + 10)
+
+        return self._screen_from_card(
+            feed_card,
+            reply_markup=self._feed_keyboard(
+                index=current_index,
+                total=total_posts,
+                prev_data=f"{CB_FEED_PREFIX}{prev_index}",
+                next_data=f"{CB_FEED_PREFIX}{next_index}",
+                prev_fast_data=f"{CB_FEED_PREFIX}{prev_fast_index}",
+                next_fast_data=f"{CB_FEED_PREFIX}{next_fast_index}",
+            ),
         )
 
     def _build_top_screen(self, index: int) -> NavigationScreen:
@@ -345,14 +393,17 @@ class TelegramAdapter:
         rows.extend(
             [
                 [
+                    InlineKeyboardButton("📰 Лента", callback_data=f"{CB_FEED_PREFIX}0"),
                     InlineKeyboardButton("📚 Последние", callback_data=f"{CB_LATEST_PREFIX}0"),
-                    InlineKeyboardButton("🔥 Топ", callback_data=f"{CB_TOP_PREFIX}0"),
                 ],
                 [
+                    InlineKeyboardButton("🔥 Топ", callback_data=f"{CB_TOP_PREFIX}0"),
                     InlineKeyboardButton("🎲 Случайная", callback_data=CB_RANDOM),
-                    InlineKeyboardButton("🗂 Рубрики", callback_data=CB_TOPICS),
                 ],
-                [InlineKeyboardButton("🏠 Меню", callback_data=CB_HOME)],
+                [
+                    InlineKeyboardButton("🗂 Рубрики", callback_data=CB_TOPICS),
+                    InlineKeyboardButton("🏠 Меню", callback_data=CB_HOME),
+                ],
             ]
         )
         return NavigationScreen(
@@ -467,12 +518,48 @@ class TelegramAdapter:
         return InlineKeyboardMarkup(
             [
                 [
+                    InlineKeyboardButton("📰 Лента", callback_data=f"{CB_FEED_PREFIX}0"),
                     InlineKeyboardButton("📚 Последние", callback_data=f"{CB_LATEST_PREFIX}0"),
-                    InlineKeyboardButton("🔥 Топ", callback_data=f"{CB_TOP_PREFIX}0"),
                 ],
                 [
+                    InlineKeyboardButton("🔥 Топ", callback_data=f"{CB_TOP_PREFIX}0"),
                     InlineKeyboardButton("🎲 Случайная", callback_data=CB_RANDOM),
+                ],
+                [
                     InlineKeyboardButton("🗂 Рубрики", callback_data=CB_TOPICS),
+                ],
+            ]
+        )
+
+    def _feed_keyboard(
+        self,
+        index: int,
+        total: int,
+        prev_data: str,
+        next_data: str,
+        prev_fast_data: str,
+        next_fast_data: str,
+    ) -> InlineKeyboardMarkup:
+        return InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton("⬅️", callback_data=prev_data),
+                    InlineKeyboardButton(f"{index + 1}/{total}", callback_data=CB_NOOP),
+                    InlineKeyboardButton("➡️", callback_data=next_data),
+                ],
+                [
+                    InlineKeyboardButton("⏮ -10", callback_data=prev_fast_data),
+                    InlineKeyboardButton("Шаг 10", callback_data=CB_NOOP),
+                    InlineKeyboardButton("+10 ⏭", callback_data=next_fast_data),
+                ],
+                [
+                    InlineKeyboardButton("🏠 Меню", callback_data=CB_HOME),
+                    InlineKeyboardButton("🗂 Рубрики", callback_data=CB_TOPICS),
+                ],
+                [
+                    InlineKeyboardButton("📚 Последние", callback_data=f"{CB_LATEST_PREFIX}0"),
+                    InlineKeyboardButton("🔥 Топ", callback_data=f"{CB_TOP_PREFIX}0"),
+                    InlineKeyboardButton("🎲 Случайная", callback_data=CB_RANDOM),
                 ],
             ]
         )
@@ -496,8 +583,11 @@ class TelegramAdapter:
                     InlineKeyboardButton("🗂 Рубрики", callback_data=CB_TOPICS),
                 ],
                 [
+                    InlineKeyboardButton("📰 Лента", callback_data=f"{CB_FEED_PREFIX}0"),
                     InlineKeyboardButton("📚 Последние", callback_data=f"{CB_LATEST_PREFIX}0"),
                     InlineKeyboardButton("🔥 Топ", callback_data=f"{CB_TOP_PREFIX}0"),
+                ],
+                [
                     InlineKeyboardButton("🎲 Случайная", callback_data=CB_RANDOM),
                 ],
             ]
@@ -508,6 +598,7 @@ class TelegramAdapter:
             [
                 [InlineKeyboardButton("🔄 Другая случайная", callback_data=CB_RANDOM)],
                 [
+                    InlineKeyboardButton("📰 Лента", callback_data=f"{CB_FEED_PREFIX}0"),
                     InlineKeyboardButton("📚 Последние", callback_data=f"{CB_LATEST_PREFIX}0"),
                     InlineKeyboardButton("🔥 Топ", callback_data=f"{CB_TOP_PREFIX}0"),
                 ],
@@ -547,8 +638,11 @@ class TelegramAdapter:
                     InlineKeyboardButton("🏠 Меню", callback_data=CB_HOME),
                 ],
                 [
+                    InlineKeyboardButton("📰 Лента", callback_data=f"{CB_FEED_PREFIX}0"),
                     InlineKeyboardButton("📚 Последние", callback_data=f"{CB_LATEST_PREFIX}0"),
                     InlineKeyboardButton("🔥 Топ", callback_data=f"{CB_TOP_PREFIX}0"),
+                ],
+                [
                     InlineKeyboardButton("🎲 Случайная", callback_data=CB_RANDOM),
                 ],
             ]

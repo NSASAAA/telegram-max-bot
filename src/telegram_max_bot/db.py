@@ -389,6 +389,55 @@ def get_latest_posts(limit: int = 10) -> list[sqlite3.Row]:
         return list(cursor.fetchall())
 
 
+def get_feed_posts(limit: int = 1, offset: int = 0) -> list[sqlite3.Row]:
+    init_db()
+    safe_limit = max(1, limit)
+    safe_offset = max(0, offset)
+    with get_connection() as connection:
+        cursor = connection.execute(
+            """
+            SELECT
+                id,
+                title,
+                link,
+                published,
+                published_label,
+                summary,
+                author,
+                categories,
+                views_count,
+                comments_count,
+                cover_image_path
+            FROM posts
+            WHERE COALESCE(is_welcome_article, 0) = 0
+            ORDER BY
+                CASE
+                    WHEN source_order IS NULL THEN 1
+                    ELSE 0
+                END,
+                source_order ASC,
+                id DESC
+            LIMIT ?
+            OFFSET ?
+            """,
+            (safe_limit, safe_offset),
+        )
+        return list(cursor.fetchall())
+
+
+def get_feed_posts_count() -> int:
+    init_db()
+    with get_connection() as connection:
+        row = connection.execute(
+            """
+            SELECT COUNT(*) AS posts_count
+            FROM posts
+            WHERE COALESCE(is_welcome_article, 0) = 0
+            """
+        ).fetchone()
+        return int(row["posts_count"]) if row is not None else 0
+
+
 def get_top_posts(limit: int = 10) -> list[sqlite3.Row]:
     init_db()
     with get_connection() as connection:

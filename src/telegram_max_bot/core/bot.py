@@ -15,6 +15,8 @@ from telegram_max_bot.core.topics import (
     get_topic_command,
 )
 from telegram_max_bot.db import (
+    get_feed_posts,
+    get_feed_posts_count,
     get_latest_posts,
     get_posts_count_by_topic,
     get_posts_by_topic,
@@ -52,6 +54,7 @@ class Bot:
                     f"Привет, {name}!\n\n"
                     "Я бот-навигатор по статьям автора.\n\n"
                     "Команды:\n"
+                    "/feed - лента всех статей\n"
                     "/articles - последние статьи\n"
                     "/top - самые читаемые статьи\n"
                     "/random - случайная статья\n"
@@ -71,6 +74,7 @@ class Bot:
             text=(
                 "Доступные команды:\n"
                 "/start - приветствие\n"
+                "/feed - лента всех статей\n"
                 "/articles - последние статьи из базы\n"
                 "/top - самые читаемые статьи из базы\n"
                 "/random - случайная статья из базы\n"
@@ -115,6 +119,21 @@ class Bot:
 
         return OutgoingMessage(
             text="Самые читаемые статьи:",
+            cards=self._preview_cards(posts),
+        )
+
+    def handle_feed(self, index: int = 0) -> OutgoingMessage:
+        total_posts = get_feed_posts_count()
+        if total_posts <= 0:
+            return OutgoingMessage(text="В базе пока нет статей.")
+
+        safe_index = max(0, min(index, total_posts - 1))
+        posts = get_feed_posts(limit=1, offset=safe_index)
+        if not posts:
+            return OutgoingMessage(text="В базе пока нет статей.")
+
+        return OutgoingMessage(
+            text=f"Лента: {safe_index + 1}/{total_posts}",
             cards=self._preview_cards(posts),
         )
 
@@ -222,6 +241,8 @@ class Bot:
             return self.handle_top()
         if text == "/random":
             return self.handle_random()
+        if text == "/feed":
+            return self.handle_feed(index=0)
         if text == "/topics":
             return self.handle_topics()
         if text == "/topic":
