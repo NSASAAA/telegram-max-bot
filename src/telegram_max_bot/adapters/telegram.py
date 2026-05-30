@@ -519,13 +519,13 @@ class TelegramAdapter:
             [
                 [
                     InlineKeyboardButton("📰 Лента", callback_data=f"{CB_FEED_PREFIX}0"),
+                ],
+                [
                     InlineKeyboardButton("📚 Последние", callback_data=f"{CB_LATEST_PREFIX}0"),
-                ],
-                [
                     InlineKeyboardButton("🔥 Топ", callback_data=f"{CB_TOP_PREFIX}0"),
-                    InlineKeyboardButton("🎲 Случайная", callback_data=CB_RANDOM),
                 ],
                 [
+                    InlineKeyboardButton("🎲 Случайная", callback_data=CB_RANDOM),
                     InlineKeyboardButton("🗂 Рубрики", callback_data=CB_TOPICS),
                 ],
             ]
