@@ -304,6 +304,7 @@ class Bot:
         if not self._web_base_url:
             return ()
 
+        use_web_app = self._web_base_url.startswith("https://")
         buttons: list[LinkButton] = []
         for index, post in enumerate(posts, start=1):
             label = single_label or f"Читать {index}"
@@ -311,6 +312,7 @@ class Bot:
                 LinkButton(
                     text=label,
                     url=f"{self._web_base_url}/articles/{post['id']}",
+                    open_in_webapp=use_web_app,
                 )
             )
 

@@ -3,7 +3,13 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Optional
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, Update
+from telegram import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    InputMediaPhoto,
+    Update,
+    WebAppInfo,
+)
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -14,7 +20,12 @@ from telegram.ext import (
 )
 
 from telegram_max_bot.core.bot import Bot
-from telegram_max_bot.core.models import IncomingMessage, OutgoingMessage, PreviewCard
+from telegram_max_bot.core.models import (
+    IncomingMessage,
+    LinkButton,
+    OutgoingMessage,
+    PreviewCard,
+)
 from telegram_max_bot.core.topics import TOPICS, get_topic_by_code
 from telegram_max_bot.db import get_feed_posts_count, get_posts_count_by_topic, get_topic_counts
 from telegram_max_bot.rss_import import import_from_rss_url
@@ -264,7 +275,14 @@ class TelegramAdapter:
                 parse_mode=response.parse_mode,
                 reply_markup=self._main_menu_keyboard(),
             )
-        return self._screen_from_card(response.cards[0], reply_markup=self._main_menu_keyboard())
+        card = response.cards[0]
+        return self._screen_from_card(
+            card,
+            reply_markup=self._with_read_button(
+                self._main_menu_keyboard(),
+                self._first_card_button(card),
+            ),
+        )
 
     def _build_about_screen(self) -> NavigationScreen:
         response = self._bot.handle_about()
@@ -312,13 +330,16 @@ class TelegramAdapter:
 
         return self._screen_from_card(
             feed_card,
-            reply_markup=self._feed_keyboard(
-                index=current_index,
-                total=total_posts,
-                prev_data=f"{CB_FEED_PREFIX}{prev_index}",
-                next_data=f"{CB_FEED_PREFIX}{next_index}",
-                prev_fast_data=f"{CB_FEED_PREFIX}{prev_fast_index}",
-                next_fast_data=f"{CB_FEED_PREFIX}{next_fast_index}",
+            reply_markup=self._with_read_button(
+                self._feed_keyboard(
+                    index=current_index,
+                    total=total_posts,
+                    prev_data=f"{CB_FEED_PREFIX}{prev_index}",
+                    next_data=f"{CB_FEED_PREFIX}{next_index}",
+                    prev_fast_data=f"{CB_FEED_PREFIX}{prev_fast_index}",
+                    next_fast_data=f"{CB_FEED_PREFIX}{next_fast_index}",
+                ),
+                self._first_card_button(feed_card),
             ),
         )
 
@@ -339,9 +360,13 @@ class TelegramAdapter:
                 parse_mode=response.parse_mode,
                 reply_markup=self._main_menu_keyboard(),
             )
+        card = response.cards[0]
         return self._screen_from_card(
-            response.cards[0],
-            reply_markup=self._random_keyboard(),
+            card,
+            reply_markup=self._with_read_button(
+                self._random_keyboard(),
+                self._first_card_button(card),
+            ),
         )
 
     def _build_topics_screen(self, page: int = 0) -> NavigationScreen:
@@ -458,16 +483,19 @@ class TelegramAdapter:
 
         return self._screen_from_card(
             card=topic_card,
-            reply_markup=self._topic_keyboard(
-                index=current_index,
-                total=len(cards),
-                topic_code=topic_code,
-                current_page=page_offset // page_size + 1,
-                total_pages=max(1, (total_posts + page_size - 1) // page_size),
-                prev_data=f"{CB_TOPIC_PREFIX}{topic_code}:{prev_offset}:{prev_index}",
-                next_data=f"{CB_TOPIC_PREFIX}{topic_code}:{next_offset}:{next_index}",
-                prev_page_data=f"{CB_TOPIC_PREFIX}{topic_code}:{prev_page_offset}:0",
-                next_page_data=f"{CB_TOPIC_PREFIX}{topic_code}:{next_page_offset}:0",
+            reply_markup=self._with_read_button(
+                self._topic_keyboard(
+                    index=current_index,
+                    total=len(cards),
+                    topic_code=topic_code,
+                    current_page=page_offset // page_size + 1,
+                    total_pages=max(1, (total_posts + page_size - 1) // page_size),
+                    prev_data=f"{CB_TOPIC_PREFIX}{topic_code}:{prev_offset}:{prev_index}",
+                    next_data=f"{CB_TOPIC_PREFIX}{topic_code}:{next_offset}:{next_index}",
+                    prev_page_data=f"{CB_TOPIC_PREFIX}{topic_code}:{prev_page_offset}:0",
+                    next_page_data=f"{CB_TOPIC_PREFIX}{topic_code}:{next_page_offset}:0",
+                ),
+                self._first_card_button(topic_card),
             ),
         )
 
@@ -494,11 +522,14 @@ class TelegramAdapter:
 
         return self._screen_from_card(
             card=card,
-            reply_markup=self._article_keyboard(
-                index=current_index,
-                total=len(cards),
-                prev_data=prev_data(prev_index),
-                next_data=next_data(next_index),
+            reply_markup=self._with_read_button(
+                self._article_keyboard(
+                    index=current_index,
+                    total=len(cards),
+                    prev_data=prev_data(prev_index),
+                    next_data=next_data(next_index),
+                ),
+                self._first_card_button(card),
             ),
         )
 
@@ -656,6 +687,33 @@ class TelegramAdapter:
             ]
         )
 
+    def _first_card_button(self, card: PreviewCard) -> Optional[LinkButton]:
+        if not card.buttons:
+            return None
+        return card.buttons[0]
+
+    def _with_read_button(
+        self,
+        reply_markup: InlineKeyboardMarkup,
+        button: Optional[LinkButton],
+    ) -> InlineKeyboardMarkup:
+        if button is None:
+            return reply_markup
+
+        rows: list[list[InlineKeyboardButton]] = [
+            [self._inline_button_from_link(button)]
+        ]
+        rows.extend([list(row) for row in reply_markup.inline_keyboard])
+        return InlineKeyboardMarkup(rows)
+
+    def _inline_button_from_link(self, button: LinkButton) -> InlineKeyboardButton:
+        if button.open_in_webapp:
+            return InlineKeyboardButton(
+                text=button.text,
+                web_app=WebAppInfo(url=button.url),
+            )
+        return InlineKeyboardButton(text=button.text, url=button.url)
+
     def _parse_index(self, data: str, prefix: str) -> int:
         return self._safe_int(data.removeprefix(prefix), default=0)
 
@@ -795,7 +853,7 @@ class TelegramAdapter:
         reply_markup = None
         if buttons:
             reply_markup = InlineKeyboardMarkup(
-                [[InlineKeyboardButton(button.text, url=button.url)] for button in buttons]
+                [[self._inline_button_from_link(button)] for button in buttons]
             )
 
         resolved_photo_path = self._resolve_photo_path(photo_path)

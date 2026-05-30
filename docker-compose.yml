@@ -21,8 +21,29 @@ services:
     volumes:
       - ./data:/app/data
     command: uvicorn telegram_max_bot.web:app --host 0.0.0.0 --port 8000
-    ports:
-      - "8000:8000"
     restart: unless-stopped
     mem_limit: 256m
     cpus: "0.50"
+    expose:
+      - "8000"
+
+  caddy:
+    image: caddy:2.8.4-alpine
+    env_file:
+      - .env
+    depends_on:
+      - web
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    ports:
+      - "80:80"
+      - "443:443"
+    restart: unless-stopped
+    mem_limit: 128m
+    cpus: "0.25"
+
+volumes:
+  caddy_data:
+  caddy_config:

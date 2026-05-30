@@ -81,6 +81,7 @@ def _render_article(
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{safe_title}</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     :root {{
       color-scheme: light;
@@ -182,6 +183,12 @@ def _render_article(
       </div>
     </article>
   </main>
+  <script>
+    if (window.Telegram && window.Telegram.WebApp) {{
+      window.Telegram.WebApp.ready();
+      window.Telegram.WebApp.expand();
+    }}
+  </script>
 </body>
 </html>"""
 

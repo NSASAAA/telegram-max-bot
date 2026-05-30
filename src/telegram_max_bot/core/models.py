@@ -22,6 +22,7 @@ class OutgoingMessage:
 class LinkButton:
     text: str
     url: str
+    open_in_webapp: bool = False
 
 
 @dataclass(frozen=True)
