@@ -113,10 +113,11 @@ SOURCE_RSS_URL=
 CHECK_INTERVAL_SECONDS=0
 DATABASE_PATH=data/bot.db
 WEB_DOMAIN=matushka-blog.ru
-WEB_BASE_URL=https://matushka-blog.ru
+WEB_HTTPS_PORT=8443
+WEB_BASE_URL=https://matushka-blog.ru:8443
 ```
 
-Если `WEB_BASE_URL` не задан, но задан `WEB_DOMAIN`, приложение само использует `https://<WEB_DOMAIN>`.
+Если `WEB_BASE_URL` не задан, но задан `WEB_DOMAIN`, приложение само использует `https://<WEB_DOMAIN>` (или `https://<WEB_DOMAIN>:<WEB_HTTPS_PORT>`, если порт не `443`).
 
 Реальные токены нельзя коммитить в Git. Файл `.env` должен оставаться локальным.
 
@@ -194,7 +195,7 @@ docker compose down
 
 - `bot` - Telegram polling-бот;
 - `web` - FastAPI веб-читатель (внутренний сервис);
-- `caddy` - reverse proxy c автоматическим HTTPS (Let's Encrypt) на `80/443`.
+- `caddy` - reverse proxy c автоматическим HTTPS (Let's Encrypt) на `80/8443` в текущей конфигурации.
 
 Оба сервиса используют одну и ту же папку `data/` через volume.
 
@@ -209,7 +210,7 @@ docker compose down
 Пример прямой ссылки:
 
 ```text
-https://matushka-blog.ru/articles/1
+https://matushka-blog.ru:8443/articles/1
 ```
 
 Пользовательский путь чтения — через кнопку `Читать` в Telegram-карточке, которая открывает эту страницу во встроенном Mini App.

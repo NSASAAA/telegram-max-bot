@@ -23,8 +23,12 @@ def load_config() -> Config:
     source_rss_url = getenv("SOURCE_RSS_URL")
     web_base_url = (getenv("WEB_BASE_URL") or "").strip() or None
     web_domain = (getenv("WEB_DOMAIN") or "").strip()
+    web_https_port = (getenv("WEB_HTTPS_PORT") or "").strip()
     if not web_base_url and web_domain:
-        web_base_url = f"https://{web_domain}"
+        port_suffix = ""
+        if web_https_port and web_https_port != "443":
+            port_suffix = f":{web_https_port}"
+        web_base_url = f"https://{web_domain}{port_suffix}"
     raw_interval = getenv("CHECK_INTERVAL_SECONDS", "0")
     try:
         check_interval_seconds = max(0, int(raw_interval))

@@ -585,7 +585,8 @@ SOURCE_RSS_URL=
 CHECK_INTERVAL_SECONDS=0
 DATABASE_PATH=data/bot.db
 WEB_DOMAIN=matushka-blog.ru
-WEB_BASE_URL=https://matushka-blog.ru
+WEB_HTTPS_PORT=8443
+WEB_BASE_URL=https://matushka-blog.ru:8443
 ```
 
 Пользовательские ответы не показывают ссылки на Дзен. Оригинальная ссылка `posts.link` остается в базе как техническое поле для сверки, обновления и восстановления источника.
@@ -693,7 +694,7 @@ FastAPI → /articles/<id> → SQLite posts + article_images → HTML article pa
 Текущий статус:
 
 - `web` сервис отдает страницу статьи `/articles/<id>`;
-- `caddy` сервис публикует домен по HTTPS (`80/443`, автоматические сертификаты Let's Encrypt);
+- `caddy` сервис публикует домен по HTTPS (`80/8443`, автоматические сертификаты Let's Encrypt);
 - кнопка `Читать` в Telegram работает как `web_app` и открывает страницу внутри Mini App;
 - на странице подключен `telegram-web-app.js` и вызовы `WebApp.ready()/expand()`.
 
@@ -830,7 +831,8 @@ DATABASE_PATH=data/bot.db
 TELEGRAM_TARGET_CHAT_ID=
 CHECK_INTERVAL_SECONDS=0
 WEB_DOMAIN=example.com
-WEB_BASE_URL=https://example.com
+WEB_HTTPS_PORT=8443
+WEB_BASE_URL=https://example.com:8443
 MAX_BOT_TOKEN=
 MAX_TARGET_CHAT_ID=
 ```

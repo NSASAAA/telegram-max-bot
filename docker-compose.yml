@@ -39,7 +39,7 @@ services:
       - caddy_config:/config
     ports:
       - "80:80"
-      - "443:443"
+      - "8443:8443"
     restart: unless-stopped
     mem_limit: 128m
     cpus: "0.25"

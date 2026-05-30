@@ -1,4 +1,9 @@
-{$WEB_DOMAIN:localhost} {
+{
+    http_port 80
+    https_port {$WEB_HTTPS_PORT:8443}
+}
+
+{$WEB_DOMAIN:localhost}:{$WEB_HTTPS_PORT:8443} {
     encode zstd gzip
     reverse_proxy web:8000
 }
