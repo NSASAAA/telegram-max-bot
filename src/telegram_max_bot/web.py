@@ -35,6 +35,7 @@ def article_page(post_id: int) -> str:
         cover_path=cover["local_path"] if cover else post["cover_image_path"],
         inline_images=inline_images,
         paragraphs=paragraphs,
+        dzen_link=post.get("link") or "",
     )
 
 
@@ -60,6 +61,7 @@ def _render_article(
     cover_path: Optional[str],
     inline_images: list,
     paragraphs: list[str],
+    dzen_link: str = "",
 ) -> str:
     safe_title = escape(title)
     meta_items = []
@@ -169,6 +171,15 @@ def _render_article(
       color: var(--muted);
       font-size: 14px;
     }}
+
+    .footer-note a {{
+      color: var(--accent);
+      text-decoration: none;
+    }}
+
+    .footer-note a:hover {{
+      text-decoration: underline;
+    }}
   </style>
 </head>
 <body>
@@ -179,7 +190,7 @@ def _render_article(
         <h1>{safe_title}</h1>
         {meta_html}
         {body_html}
-        <div class="footer-note">Текст сохранен в архиве автора.</div>
+        <div class="footer-note">Текст сохранен в архиве автора.{f' <a href="{escape(dzen_link)}" target="_blank" rel="noopener">Читать на Яндекс Дзен →</a>' if dzen_link else ''}</div>
       </div>
     </article>
   </main>
