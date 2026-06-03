@@ -281,6 +281,7 @@ class TelegramAdapter:
             reply_markup=self._with_read_button(
                 self._main_menu_keyboard(),
                 self._first_card_button(card),
+                extra_buttons=card.buttons[1:],
             ),
         )
 
@@ -340,6 +341,7 @@ class TelegramAdapter:
                     next_fast_data=f"{CB_FEED_PREFIX}{next_fast_index}",
                 ),
                 self._first_card_button(feed_card),
+                extra_buttons=feed_card.buttons[1:],
             ),
         )
 
@@ -366,6 +368,7 @@ class TelegramAdapter:
             reply_markup=self._with_read_button(
                 self._random_keyboard(),
                 self._first_card_button(card),
+                extra_buttons=card.buttons[1:],
             ),
         )
 
@@ -496,6 +499,7 @@ class TelegramAdapter:
                     next_page_data=f"{CB_TOPIC_PREFIX}{topic_code}:{next_page_offset}:0",
                 ),
                 self._first_card_button(topic_card),
+                extra_buttons=topic_card.buttons[1:],
             ),
         )
 
@@ -530,6 +534,7 @@ class TelegramAdapter:
                     next_data=next_data(next_index),
                 ),
                 self._first_card_button(card),
+                extra_buttons=card.buttons[1:],
             ),
         )
 
@@ -696,13 +701,13 @@ class TelegramAdapter:
         self,
         reply_markup: InlineKeyboardMarkup,
         button: Optional[LinkButton],
+        extra_buttons: tuple[LinkButton, ...] = (),
     ) -> InlineKeyboardMarkup:
         if button is None:
             return reply_markup
 
-        rows: list[list[InlineKeyboardButton]] = [
-            [self._inline_button_from_link(button)]
-        ]
+        row = [self._inline_button_from_link(b) for b in (button,) + extra_buttons]
+        rows: list[list[InlineKeyboardButton]] = [row]
         rows.extend([list(row) for row in reply_markup.inline_keyboard])
         return InlineKeyboardMarkup(rows)
 

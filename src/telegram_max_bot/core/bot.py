@@ -273,9 +273,13 @@ class Bot:
         dzen_suffix = f'\n\n<a href="{dzen_link}">Читать на Яндекс Дзен →</a>' if dzen_link else ""
         body = f"{escape(published_label)}\n\n{summary}{dzen_suffix}"
 
+        buttons = self._article_buttons([post], single_label="Читать")
+        if dzen_link:
+            buttons = buttons + (LinkButton(text="Яндекс Дзен →", url=dzen_link),)
+
         return PreviewCard(
             text=f"<b>{title}</b>\n\n{body}",
-            buttons=self._article_buttons([post], single_label="Читать"),
+            buttons=buttons,
             parse_mode="HTML",
             photo_path=self._cover_image_path(post),
         )
