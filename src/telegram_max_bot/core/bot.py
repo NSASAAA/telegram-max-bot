@@ -269,7 +269,9 @@ class Bot:
         summary = escape(clean_html(post["summary"], limit=180) or "Описание недоступно.")
         published_label = self._published_label(post)
 
-        body = f"{escape(published_label)}\n\n{summary}"
+        dzen_link = str(post["link"] or "").strip() if "link" in post.keys() else ""
+        dzen_suffix = f'\n\n<a href="{dzen_link}">Читать на Яндекс Дзен →</a>' if dzen_link else ""
+        body = f"{escape(published_label)}\n\n{summary}{dzen_suffix}"
 
         return PreviewCard(
             text=f"<b>{title}</b>\n\n{body}",
