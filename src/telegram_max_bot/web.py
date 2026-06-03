@@ -35,7 +35,7 @@ def article_page(post_id: int) -> str:
         cover_path=cover["local_path"] if cover else post["cover_image_path"],
         inline_images=inline_images,
         paragraphs=paragraphs,
-        dzen_link=post.get("link") or "",
+        dzen_link=post["link"] or "",
     )
 
 
